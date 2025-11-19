@@ -25,6 +25,12 @@
 - python-pptx - PowerPoint
 - openpyxl - Excel
 
+**前端**:
+- React 18 - UI 框架
+- TypeScript - 类型安全
+- Vite - 构建工具
+- Tailwind CSS - 样式框架
+
 ## 🚀 快速开始
 
 ### 1. 前置要求
@@ -62,13 +68,25 @@ docker-compose down
 
 ### 4. 访问应用
 
+- **前端界面**: http://localhost:3000
 - **API 文档**: http://localhost:8000/docs
 - **健康检查**: http://localhost:8000/health
 - **Qdrant 管理界面**: http://localhost:6333/dashboard
 
 ## 📖 使用示例
 
-### 1. 用户注册
+### 方式一：使用前端界面（推荐）
+
+1. 访问 http://localhost:3000
+2. 点击"注册"创建账号
+3. 登录后进入主界面
+4. 点击"上传文档"上传 PDF/Word/PPT 等文件
+5. 等待文档处理完成
+6. 在搜索框输入问题，查看相关内容
+
+### 方式二：使用 API（开发调试）
+
+#### 1. 用户注册
 
 ```bash
 curl -X POST "http://localhost:8000/api/auth/register" \
@@ -81,7 +99,7 @@ curl -X POST "http://localhost:8000/api/auth/register" \
   }'
 ```
 
-### 2. 用户登录
+#### 2. 用户登录
 
 ```bash
 curl -X POST "http://localhost:8000/api/auth/login" \
@@ -95,7 +113,7 @@ curl -X POST "http://localhost:8000/api/auth/login" \
 # {"access_token":"eyJ...", "token_type":"bearer"}
 ```
 
-### 3. 上传文档
+#### 3. 上传文档
 
 ```bash
 TOKEN="your-access-token-here"
@@ -105,7 +123,7 @@ curl -X POST "http://localhost:8000/api/upload" \
   -F "file=@/path/to/your/document.pdf"
 ```
 
-### 4. 检索文档
+#### 4. 检索文档
 
 ```bash
 curl -X POST "http://localhost:8000/api/search" \
@@ -140,6 +158,15 @@ DocsAgent/
 │   │   ├── upload.py          # 文档上传
 │   │   └── search.py          # 文档检索
 │   └── utils/                  # 工具函数
+├── web/                        # 前端界面
+│   ├── src/
+│   │   ├── api/               # API 客户端
+│   │   ├── components/        # React 组件
+│   │   ├── pages/             # 页面
+│   │   ├── App.tsx            # 主应用
+│   │   └── main.tsx           # 入口文件
+│   ├── package.json
+│   └── vite.config.ts
 ├── docker-compose.yml          # Docker 编排
 ├── .env                        # 环境变量
 └── README.md                   # 项目文档
@@ -236,11 +263,12 @@ EMBEDDING_DEVICE=cuda
 ## 📝 TODO
 
 - [ ] 实现 QA（问答）接口
-- [ ] 添加文档管理界面
+- [ ] 添加文档列表和管理功能
 - [ ] 支持更多文件格式（图片 OCR）
 - [ ] 实现重排序（Reranker）
-- [ ] 添加权限控制（ACL）
-- [ ] 构建前端界面
+- [ ] 完善权限控制（ACL）
+- [ ] 添加搜索历史记录
+- [ ] 实现暗色模式
 
 ## 📄 许可证
 
