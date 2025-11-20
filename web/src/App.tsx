@@ -3,8 +3,9 @@ import { authApi } from './api/client'
 import LoginPage from './pages/LoginPage'
 import SearchPage from './pages/SearchPage'
 import DocumentPage from './pages/DocumentPage'
+import DocumentsListPage from './pages/DocumentsListPage'
 
-// ×Ý¤„ï1Äö
+// Protected route - requires authentication
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!authApi.isAuthenticated()) {
     return <Navigate to="/login" replace />
@@ -12,7 +13,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
-// {Uï1ò{Uól	
+// Login route - redirect to home if already authenticated
 function LoginRoute({ children }: { children: React.ReactNode }) {
   if (authApi.isAuthenticated()) {
     return <Navigate to="/search" replace />
@@ -24,7 +25,7 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* {Uu */}
+        {/* Login page */}
         <Route
           path="/login"
           element={
@@ -34,7 +35,7 @@ function App() {
           }
         />
 
-        {/* "u */}
+        {/* Search page */}
         <Route
           path="/search"
           element={
@@ -44,10 +45,9 @@ function App() {
           }
         />
 
-        {/* ‡c
- u */}
+        {/* Document upload page */}
         <Route
-          path="/documents"
+          path="/upload"
           element={
             <ProtectedRoute>
               <DocumentPage />
@@ -55,10 +55,20 @@ function App() {
           }
         />
 
-        {/* Ø¤ól0"u */}
+        {/* Documents list/management page */}
+        <Route
+          path="/documents"
+          element={
+            <ProtectedRoute>
+              <DocumentsListPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Default route - redirect to search */}
         <Route path="/" element={<Navigate to="/search" replace />} />
 
-        {/* 404 */}
+        {/* 404 - redirect to search */}
         <Route path="*" element={<Navigate to="/search" replace />} />
       </Routes>
     </Router>
