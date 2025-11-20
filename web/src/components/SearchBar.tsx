@@ -7,7 +7,7 @@ interface SearchBarProps {
   placeholder?: string
 }
 
-export default function SearchBar({ onSearch, loading = false, placeholder = '"‡c…¹...' }: SearchBarProps) {
+export default function SearchBar({ onSearch, loading = false, placeholder = 'Search documents...' }: SearchBarProps) {
   const [query, setQuery] = useState('')
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -34,7 +34,7 @@ export default function SearchBar({ onSearch, loading = false, placeholder = '"
           disabled={loading || !query.trim()}
           className="absolute right-2 top-1/2 transform -translate-y-1/2 px-4 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-medium"
         >
-          {loading ? '"-...' : '"'}
+          {loading ? 'Searching...' : 'Search'}
         </button>
       </div>
     </form>
