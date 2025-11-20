@@ -1,5 +1,6 @@
 """BGE-based local text embedding implementation"""
 from typing import List
+import os
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from services.embedder.base import BaseEmbedder
@@ -11,6 +12,9 @@ class BGEEmbedder(BaseEmbedder):
     """BGE (BAAI General Embedding) text embedder implementation"""
 
     def __init__(self):
+        # Configure Hugging Face mirror for China (speeds up model download)
+        os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
+
         logger.info(f"Loading BGE model: {settings.EMBEDDING_MODEL_NAME}")
         self.model = SentenceTransformer(
             settings.EMBEDDING_MODEL_NAME,
