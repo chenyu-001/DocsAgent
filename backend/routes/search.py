@@ -1,4 +1,4 @@
-"""‡cÀ"ï1"""
+"""Document Search Route"""
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from api.auth import get_current_active_user
@@ -10,7 +10,7 @@ router = APIRouter()
 
 
 class SearchRequest(BaseModel):
-    """"÷B!‹"""
+    """Search request model"""
     query: str
     top_k: int = 5
 
@@ -21,16 +21,16 @@ async def search_documents(
     current_user: User = Depends(get_current_active_user),
 ):
     """
-    À"øs‡c
+    Semantic search in documents
 
     Args:
-        request: "÷B+åâŒÔÞpÏ	
-        current_user: SM(7
+        request: Search request containing query and top_k parameter
+        current_user: Current authenticated user
 
     Returns:
-        À"Óœh
+        Search results
     """
-    logger.info(f"(7 {current_user.username} ": {request.query}")
+    logger.info(f"User {current_user.username} searching: {request.query}")
 
     retriever = get_retriever()
     results = retriever.search(request.query, top_k=request.top_k)

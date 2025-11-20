@@ -1,8 +1,8 @@
 """
-§¡åàC!W
-- JWT Token åå¡
-- ∆»
-- CPùV
+Authentication Module
+- JWT Token management
+- Password hashing
+- Permission validation
 """
 from datetime import datetime, timedelta
 from typing import Optional
@@ -18,26 +18,26 @@ from api.db import get_db
 from models.user_models import User, UserRole
 
 
-# ========== ∆» ==========
+# ========== Password Hashing ==========
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
-# ========== Pydantic !ã ==========
+# ========== Pydantic Models ==========
 class Token(BaseModel):
-    """Token Õî!ã"""
+    """Token response model"""
     access_token: str
     token_type: str
 
 
 class TokenData(BaseModel):
-    """Token pn!ã"""
+    """Token payload data"""
     username: Optional[str] = None
 
 
 class UserCreate(BaseModel):
-    """(7˙!ã"""
+    """User registration model"""
     username: str
     email: str
     password: str
@@ -45,13 +45,13 @@ class UserCreate(BaseModel):
 
 
 class UserLogin(BaseModel):
-    """(7{U!ã"""
+    """User login model"""
     username: str
     password: str
 
 
 class UserResponse(BaseModel):
-    """(7Õî!ã"""
+    """User response model"""
     id: int
     username: str
     email: str
@@ -63,28 +63,28 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 
-# ========== ∆ ==========
+# ========== Password Functions ==========
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """å¡∆"""
+    """Verify password"""
     return pwd_context.verify(plain_password, hashed_password)
 
 
 def get_password_hash(password: str) -> str:
-    """»∆"""
+    """Hash password"""
     return pwd_context.hash(password)
 
 
-# ========== JWT Token  ==========
+# ========== JWT Token Functions ==========
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """
-    ˙ JWT Token
+    Create JWT Token
 
     Args:
-        data: ÅÑpn8+ sub: username	
-        expires_delta: «ˆÙÔ		
+        data: Token payload data (must include sub: username)
+        expires_delta: Optional expiration time delta
 
     Returns:
-        JWT Token W&2
+        JWT Token string
     """
     to_encode = data.copy()
 
@@ -100,13 +100,13 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 def decode_access_token(token: str) -> Optional[TokenData]:
     """
-    „ JWT Token
+    Decode JWT Token
 
     Args:
-        token: JWT Token W&2
+        token: JWT Token string
 
     Returns:
-        TokenData  None
+        TokenData or None
     """
     try:
         payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
@@ -118,18 +118,18 @@ def decode_access_token(token: str) -> Optional[TokenData]:
         return None
 
 
-# ========== (7§¡ ==========
+# ========== User Authentication ==========
 def authenticate_user(db: Session, username: str, password: str) -> Optional[User]:
     """
-    å¡(7Ì¡
+    Authenticate user credentials
 
     Args:
-        db: pnì›
-        username: (7
-        password: ∆
+        db: Database session
+        username: Username
+        password: Password
 
     Returns:
-        (7˘a None
+        User object or None
     """
     user = db.query(User).filter(User.username == username).first()
     if not user:
@@ -139,15 +139,15 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[Use
     return user
 
 
-# ========== ùVËe∑÷SM(7 ==========
+# ========== Dependency Functions to Get Current User ==========
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ) -> User:
     """
-    Œ Token ∑÷SM(7
+    Get current user from Token
 
-    (π
+    Example usage:
     ```python
     @app.get("/me")
     def read_current_user(current_user: User = Depends(get_current_user)):
@@ -156,7 +156,7 @@ async def get_current_user(
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="‡’å¡Ì¡",
+        detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
 
@@ -173,9 +173,9 @@ async def get_current_user(
 
 async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
     """
-    ∑÷SM¿;(7
+    Get current active user
 
-    (π
+    Example usage:
     ```python
     @app.get("/me")
     def read_me(current_user: User = Depends(get_current_active_user)):
@@ -183,16 +183,16 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
     ```
     """
     if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="(7*¿;")
+        raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
 
-# ========== CP¿Â ==========
+# ========== Permission Validation ==========
 def require_role(allowed_roles: list[UserRole]):
     """
-    CP¿Â≈phÂÇ
+    Permission validation decorator
 
-    (π
+    Example usage:
     ```python
     @app.get("/admin")
     def admin_only(current_user: User = Depends(require_role([UserRole.ADMIN]))):
@@ -203,12 +203,12 @@ def require_role(allowed_roles: list[UserRole]):
         if current_user.role not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="CP≥"
+                detail="Insufficient permissions"
             )
         return current_user
     return role_checker
 
 
-# ÎwCPùV
+# Common permission validators
 require_admin = require_role([UserRole.ADMIN])
 require_user = require_role([UserRole.ADMIN, UserRole.USER])
