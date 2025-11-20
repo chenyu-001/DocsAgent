@@ -19,19 +19,19 @@ services:
     networks:
       - docsagent-network
 
-  # Qdrant - 向量数据库
+  # Qdrant - Vector Database
   qdrant:
     image: qdrant/qdrant:v1.7.4
     container_name: docsagent-qdrant
     ports:
       - "${QDRANT_PORT:-6333}:6333"
-      - "6334:6334"  # gRPC 端口
+      - "6334:6334"  # gRPC port
     volumes:
       - qdrant_data:/qdrant/storage
     environment:
       QDRANT__SERVICE__GRPC_PORT: 6334
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:6333/ || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
