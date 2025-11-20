@@ -1,0 +1,83 @@
+# -------------------------
+# Python
+# -------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.pyi
+*.cache
+*.egg-info/
+*.egg
+.eggs/
+
+# virtualenv
+venv/
+.venv/
+env/
+ENV/
+
+# pip
+pip-log.txt
+pip-delete-this-directory.txt
+
+
+# -------------------------
+# Project build / temp
+# -------------------------
+build/
+dist/
+tmp/
+.temp/
+.cache/
+.coverage
+htmlcov/
+cov.xml
+pytest_cache/
+.tox/
+.mypy_cache/
+.dmypy.json
+.pytest_cache/
+
+
+# -------------------------
+# Docker
+# -------------------------
+docker-compose.override.yml
+docker-compose.local.yml
+.docker/
+.dockerignore
+docker_data/
+logs/
+*~
+
+
+# -------------------------
+# VSCode
+# -------------------------
+.vscode/
+
+
+# -------------------------
+# PyCharm / IDEA
+# -------------------------
+.idea/
+*.iml
+
+
+# -------------------------
+# OS files
+# -------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+
+# -------------------------
+# Test outputs
+# -------------------------
+tests/__pycache__/
+tests/.pytest_cache/
+tests/results/
+tests/output/
