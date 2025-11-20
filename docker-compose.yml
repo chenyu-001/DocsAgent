@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL - 元数据存储
   postgres:
@@ -23,7 +21,7 @@ services:
 
   # Qdrant - 向量数据库
   qdrant:
-    image: qdrant/qdrant:latest
+    image: qdrant/qdrant:v1.7.4
     container_name: docsagent-qdrant
     ports:
       - "${QDRANT_PORT:-6333}:6333"
