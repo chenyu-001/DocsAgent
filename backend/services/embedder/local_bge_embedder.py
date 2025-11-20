@@ -1,4 +1,4 @@
-"""BGE ,0Le!‹"""
+"""BGE-based local text embedding implementation"""
 from typing import List
 import numpy as np
 from sentence_transformers import SentenceTransformer
@@ -8,22 +8,22 @@ from loguru import logger
 
 
 class BGEEmbedder(BaseEmbedder):
-    """BGE Le!‹"""
+    """BGE (BAAI General Embedding) text embedder implementation"""
 
     def __init__(self):
-        logger.info(f" } BGE !‹: {settings.EMBEDDING_MODEL_NAME}")
+        logger.info(f"Loading BGE model: {settings.EMBEDDING_MODEL_NAME}")
         self.model = SentenceTransformer(
             settings.EMBEDDING_MODEL_NAME,
             device=settings.EMBEDDING_DEVICE
         )
-        logger.info(f" BGE !‹ }Œô¦: {self.dimension}")
+        logger.info(f"BGE model loaded successfully. Embedding dimension: {self.dimension}")
 
     def embed_text(self, text: str) -> np.ndarray:
-        """LeU*‡,"""
+        """Embed a single text string into a vector representation"""
         return self.model.encode(text, convert_to_numpy=True)
 
     def embed_batch(self, texts: List[str]) -> List[np.ndarray]:
-        """yÏLe‡,"""
+        """Embed a batch of text strings into vector representations"""
         embeddings = self.model.encode(
             texts,
             batch_size=settings.EMBEDDING_BATCH_SIZE,
@@ -34,16 +34,16 @@ class BGEEmbedder(BaseEmbedder):
 
     @property
     def dimension(self) -> int:
-        """Ïô¦"""
+        """Return the dimensionality of the embedding vectors"""
         return self.model.get_sentence_embedding_dimension()
 
 
-# h@U‹
+# Singleton instance
 _embedder_instance = None
 
 
 def get_bge_embedder() -> BGEEmbedder:
-    """·Ö BGE Lehž‹U‹	"""
+    """Get or create the singleton BGE embedder instance"""
     global _embedder_instance
     if _embedder_instance is None:
         _embedder_instance = BGEEmbedder()

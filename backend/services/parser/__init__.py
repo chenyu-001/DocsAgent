@@ -1,4 +1,4 @@
-"""ác„êh!W"""
+"""Document Parser Module"""
 from services.parser.pdf_parser import PDFParser
 from services.parser.docx_parser import DOCXParser
 from services.parser.pptx_parser import PPTXParser
@@ -7,7 +7,7 @@ from models.document_models import DocumentType
 
 
 class DocumentParser:
-    """ác„êhÂÇ"""
+    """Document Parser Factory"""
 
     @staticmethod
     def parse(file_path: str, file_type: DocumentType):
@@ -20,5 +20,5 @@ class DocumentParser:
         }
         parser_class = parsers.get(file_type)
         if not parser_class:
-            raise ValueError(f"/Ñáˆ{ã: {file_type}")
+            raise ValueError(f"Unsupported document type: {file_type}")
         return parser_class().parse(file_path)

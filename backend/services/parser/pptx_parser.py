@@ -1,17 +1,17 @@
-"""PPTX „êh"""
+"""PPTX document parser"""
 from pptx import Presentation
 from utils.text_clean import clean_text
 
 
 class PPTXParser:
-    """PowerPoint ác„êh"""
+    """Parser for PowerPoint presentations"""
 
     def parse(self, file_path: str):
-        """„ê PPTX áˆ"""
+        """Extract text and metadata from PPTX file"""
         prs = Presentation(file_path)
         text_parts = []
 
-        # –÷œuÖπ
+        # Extract text from each slide
         for slide_num, slide in enumerate(prs.slides):
             slide_text = []
             for shape in slide.shapes:
@@ -24,7 +24,7 @@ class PPTXParser:
         full_text = "\n\n".join(text_parts)
         cleaned_text = clean_text(full_text)
 
-        # –÷Cpn
+        # Extract metadata
         core_props = prs.core_properties
         metadata = {
             "title": core_props.title or "",

@@ -1,18 +1,18 @@
-"""PDF „êh"""
+"""PDF document parser"""
 import fitz  # PyMuPDF
 from utils.text_clean import clean_text
 
 
 class PDFParser:
-    """PDF ác„êh"""
+    """Parser for PDF documents"""
 
     def parse(self, file_path: str):
-        """„ê PDF áˆ"""
+        """Extract text and metadata from PDF file"""
         doc = fitz.open(file_path)
         text_parts = []
         metadata = {}
 
-        # –÷Cpn
+        # Extract metadata
         meta = doc.metadata
         if meta:
             metadata = {
@@ -22,7 +22,7 @@ class PDFParser:
                 "keywords": meta.get("keywords", ""),
             }
 
-        # –÷á,
+        # Extract text from each page
         for page_num, page in enumerate(doc):
             page_text = page.get_text()
             if page_text.strip():
