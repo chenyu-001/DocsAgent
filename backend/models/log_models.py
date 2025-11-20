@@ -1,5 +1,5 @@
 """
-Â◊!ã
+Log Models
 """
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean, Index, JSON
@@ -8,42 +8,42 @@ from api.db import Base
 
 
 class QueryLog(Base):
-    """Â‚Â◊h"""
+    """Query log table"""
     __tablename__ = "query_logs"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
 
-    # (7·o
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, comment="(7 ID")
+    # User information
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, comment="User ID")
 
-    # Â‚·o
-    query_text = Column(Text, nullable=False, comment="Â‚á,")
-    query_hash = Column(String(64), index=True, nullable=False, comment="Â‚á, SHA256 »")
+    # Query information
+    query_text = Column(Text, nullable=False, comment="Query text")
+    query_hash = Column(String(64), index=True, nullable=False, comment="Query text SHA256 hash")
 
-    # ¿"”ú
-    num_results = Column(Integer, nullable=True, comment="‘ﬁ”úp")
-    top_document_ids = Column(JSON, nullable=True, comment="‘ﬁÑác ID h")
+    # Search results
+    num_results = Column(Integer, nullable=True, comment="Number of results returned")
+    top_document_ids = Column(JSON, nullable=True, comment="List of top document IDs")
 
-    # '˝
-    retrieval_time = Column(Float, nullable=True, comment="¿"ˆÎ“	")
-    llm_time = Column(Float, nullable=True, comment="LLM ˆÎ“	")
-    total_time = Column(Float, nullable=True, comment=";ˆÎ“	")
+    # Performance metrics
+    retrieval_time = Column(Float, nullable=True, comment="Retrieval time in seconds")
+    llm_time = Column(Float, nullable=True, comment="LLM response time in seconds")
+    total_time = Column(Float, nullable=True, comment="Total time in seconds")
 
-    # Õà
-    user_feedback = Column(Integer, nullable=True, comment="(7Õàƒ1-5	")
-    feedback_comment = Column(Text, nullable=True, comment="(7Õàƒ∫")
+    # User feedback
+    user_feedback = Column(Integer, nullable=True, comment="User feedback rating 1-5")
+    feedback_comment = Column(Text, nullable=True, comment="User feedback comment")
 
-    # IP åæ·o
-    ip_address = Column(String(50), nullable=True, comment="IP 0@")
+    # IP and user agent
+    ip_address = Column(String(50), nullable=True, comment="IP address")
     user_agent = Column(String(500), nullable=True, comment="User Agent")
 
-    # ˆÙ3
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True, comment="˙ˆÙ")
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True, comment="Creation time")
 
-    # s˚
+    # Relationships
     user = relationship("User", back_populates="query_logs")
 
-    # "†Â‚
+    # Indexes
     __table_args__ = (
         Index("idx_query_created", "created_at"),
         Index("idx_query_user_created", "user_id", "created_at"),
@@ -54,7 +54,7 @@ class QueryLog(Base):
         return f"<QueryLog(id={self.id}, user_id={self.user_id}, query='{preview}')>"
 
     def to_dict(self):
-        """lb:Wx"""
+        """Convert to dictionary"""
         return {
             "id": self.id,
             "user_id": self.user_id,
@@ -69,38 +69,38 @@ class QueryLog(Base):
 
 
 class OperationLog(Base):
-    """Õ\Â◊h"""
+    """Operation log table"""
     __tablename__ = "operation_logs"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
 
-    # (7·o
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, comment="(7 ID")
+    # User information
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, comment="User ID")
 
-    # Õ\·o
-    operation_type = Column(String(50), nullable=False, index=True, comment="Õ\{ãupload/delete/updateI	")
-    resource_type = Column(String(50), nullable=False, comment="Dê{ãdocument/user/aclI	")
-    resource_id = Column(Integer, nullable=True, comment="Dê ID")
+    # Operation information
+    operation_type = Column(String(50), nullable=False, index=True, comment="Operation type (upload/delete/update etc)")
+    resource_type = Column(String(50), nullable=False, comment="Resource type (document/user/acl etc)")
+    resource_id = Column(Integer, nullable=True, comment="Resource ID")
 
-    # Õ\Ê≈
-    description = Column(Text, nullable=True, comment="Õ\œ")
-    details = Column(JSON, nullable=True, comment="Ê∆·oJSON	")
+    # Operation details
+    description = Column(Text, nullable=True, comment="Operation description")
+    details = Column(JSON, nullable=True, comment="Detailed information JSON")
 
-    # Õ\”ú
-    success = Column(Boolean, default=True, nullable=False, comment="/&ü")
-    error_message = Column(Text, nullable=True, comment="Ô·o")
+    # Operation result
+    success = Column(Boolean, default=True, nullable=False, comment="Is successful")
+    error_message = Column(Text, nullable=True, comment="Error message")
 
-    # IP åæ·o
-    ip_address = Column(String(50), nullable=True, comment="IP 0@")
+    # IP and user agent
+    ip_address = Column(String(50), nullable=True, comment="IP address")
     user_agent = Column(String(500), nullable=True, comment="User Agent")
 
-    # ˆÙ3
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True, comment="˙ˆÙ")
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True, comment="Creation time")
 
-    # s˚
+    # Relationships
     user = relationship("User", back_populates="operation_logs")
 
-    # "†Â‚
+    # Indexes
     __table_args__ = (
         Index("idx_operation_type_created", "operation_type", "created_at"),
         Index("idx_operation_user_created", "user_id", "created_at"),
@@ -110,7 +110,7 @@ class OperationLog(Base):
         return f"<OperationLog(id={self.id}, type='{self.operation_type}', resource='{self.resource_type}:{self.resource_id}')>"
 
     def to_dict(self):
-        """lb:Wx"""
+        """Convert to dictionary"""
         return {
             "id": self.id,
             "user_id": self.user_id,
