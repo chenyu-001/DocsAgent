@@ -30,7 +30,7 @@ class Chunk(Base):
     vector_id = Column(String(100), unique=True, index=True, nullable=True, comment="Vector database point ID")
 
     # Additional metadata
-    metadata = Column(Text, nullable=True, comment="Additional metadata JSON string")
+    chunk_metadata = Column(Text, nullable=True, comment="Additional metadata JSON string")
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, comment="Creation time")
