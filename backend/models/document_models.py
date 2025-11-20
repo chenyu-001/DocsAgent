@@ -56,7 +56,7 @@ class Document(Base):
 
     # Parsed content
     parsed_text = Column(Text, nullable=True, comment="Parsed text content")
-    metadata = Column(JSON, nullable=True, comment="Additional metadata JSON")
+    doc_metadata = Column(JSON, nullable=True, comment="Additional metadata JSON")
 
     # Status
     status = Column(Enum(DocumentStatus), default=DocumentStatus.UPLOADING, nullable=False, comment="Status")
