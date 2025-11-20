@@ -4,7 +4,7 @@ import SearchBar from '../components/SearchBar'
 import ResultCard from '../components/ResultCard'
 import { searchApi, authApi } from '../api/client'
 import type { SearchResult } from '../api/types'
-import { Upload, LogOut, FileText } from 'lucide-react'
+import { Upload, LogOut, FileText, FolderOpen } from 'lucide-react'
 
 export default function SearchPage() {
   const navigate = useNavigate()
@@ -37,6 +37,10 @@ export default function SearchPage() {
   }
 
   const handleUpload = () => {
+    navigate('/upload')
+  }
+
+  const handleMyDocuments = () => {
     navigate('/documents')
   }
 
@@ -54,6 +58,13 @@ export default function SearchPage() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
+              <button
+                onClick={handleMyDocuments}
+                className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
+              >
+                <FolderOpen className="w-4 h-4" />
+                <span>My Documents</span>
+              </button>
               <button
                 onClick={handleUpload}
                 className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"

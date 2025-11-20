@@ -106,16 +106,46 @@ export const documentApi = {
     return response.data
   },
 
-  // Get document list - TODO: implement backend endpoint
-  // list: async (): Promise<Document[]> => {
-  //   const response = await api.get<Document[]>('/api/documents')
-  //   return response.data
-  // },
+  // Get document list with pagination
+  list: async (params?: {
+    page?: number
+    page_size?: number
+    status?: string
+    file_type?: string
+    search?: string
+  }): Promise<{
+    documents: any[]
+    total: number
+    page: number
+    page_size: number
+    total_pages: number
+  }> => {
+    const response = await api.get('/api/documents', { params })
+    return response.data
+  },
 
-  // Delete document - TODO: implement backend endpoint
-  // delete: async (id: number): Promise<void> => {
-  //   await api.delete(`/api/documents/${id}`)
-  // },
+  // Get document details by ID
+  getById: async (id: number): Promise<any> => {
+    const response = await api.get(`/api/documents/${id}`)
+    return response.data
+  },
+
+  // Delete document
+  delete: async (id: number): Promise<{ message: string; document_id: number }> => {
+    const response = await api.delete(`/api/documents/${id}`)
+    return response.data
+  },
+
+  // Get document statistics
+  getStats: async (): Promise<{
+    total_documents: number
+    total_storage_bytes: number
+    by_status: Record<string, number>
+    by_type: Record<string, number>
+  }> => {
+    const response = await api.get('/api/documents/stats/summary')
+    return response.data
+  },
 }
 
 // ==================== Search API ====================
