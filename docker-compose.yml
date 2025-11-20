@@ -1,0 +1,127 @@
+version: '3.8'
+
+services:
+  # PostgreSQL - 元数据存储
+  postgres:
+    image: postgres:15-alpine
+    container_name: docsagent-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-docsagent}
+      POSTGRES_USER: ${POSTGRES_USER:-docsagent}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-docsagent_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-docsagent}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - docsagent-network
+
+  # Qdrant - 向量数据库
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: docsagent-qdrant
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+      - "6334:6334"  # gRPC 端口
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__GRPC_PORT: 6334
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - docsagent-network
+
+  # 前端 Web 服务
+  frontend:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: docsagent-frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+    environment:
+      VITE_API_URL: http://localhost:8000
+    depends_on:
+      - backend
+    networks:
+      - docsagent-network
+
+  # 后端 API 服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: docsagent-backend
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app
+      - ./storage:/app/storage
+      - ./logs:/app/logs
+      - huggingface_cache:/root/.cache/huggingface  # 缓存模型
+    environment:
+      # 数据库配置
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-docsagent}
+      POSTGRES_USER: ${POSTGRES_USER:-docsagent}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-docsagent_password}
+
+      # Qdrant 配置
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-documents}
+
+      # JWT 配置
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-secret-key-change-in-production}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-1440}
+
+      # 嵌入模型配置
+      EMBEDDING_MODEL_TYPE: ${EMBEDDING_MODEL_TYPE:-bge}  # bge 或 openai
+      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-BAAI/bge-large-zh-v1.5}
+      EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-1024}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+
+      # LLM 配置 (Qwen)
+      LLM_TYPE: ${LLM_TYPE:-qwen}  # qwen, openai, claude 等
+      LLM_API_BASE: ${LLM_API_BASE:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL_NAME: ${LLM_MODEL_NAME:-qwen-plus}
+
+      # 文件存储配置
+      STORAGE_PATH: /app/storage
+      MAX_FILE_SIZE: ${MAX_FILE_SIZE:-100}  # MB
+
+      # 应用配置
+      DEBUG: ${DEBUG:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - docsagent-network
+
+volumes:
+  postgres_data:
+  qdrant_data:
+  huggingface_cache:
+
+networks:
+  docsagent-network:
+    driver: bridge
