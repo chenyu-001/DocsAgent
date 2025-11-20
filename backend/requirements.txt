@@ -55,7 +55,7 @@ anthropic==0.45.0  # Claude API (optional)
 # ---------- Utilities ----------
 loguru==0.7.3  # Logging
 pydantic==2.12.3  # Data validation
-pydantic-settings==2.8.2  # Configuration
+pydantic-settings==2.12.0  # Configuration
 httpx==0.28.1  # HTTP client
 aiofiles==24.1.0  # Async file operations
 python-magic==0.4.27  # File type detection
