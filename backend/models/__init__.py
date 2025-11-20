@@ -1,5 +1,5 @@
 """
-pn“!‹!W
+Database Models Module
 """
 from models.user_models import User
 from models.document_models import Document

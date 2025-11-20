@@ -1,24 +1,24 @@
-"""Le!‹ú{"""
+"""Base class for text embedding models"""
 from abc import ABC, abstractmethod
 from typing import List
 import numpy as np
 
 
 class BaseEmbedder(ABC):
-    """Le!‹½aú{"""
+    """Abstract base class for text embedding implementations"""
 
     @abstractmethod
     def embed_text(self, text: str) -> np.ndarray:
-        """LeU*‡,"""
+        """Embed a single text string into a vector representation"""
         pass
 
     @abstractmethod
     def embed_batch(self, texts: List[str]) -> List[np.ndarray]:
-        """yÏLe‡,"""
+        """Embed a batch of text strings into vector representations"""
         pass
 
     @property
     @abstractmethod
     def dimension(self) -> int:
-        """Ïô¦"""
+        """Return the dimensionality of the embedding vectors"""
         pass

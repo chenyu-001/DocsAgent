@@ -1,5 +1,5 @@
 """
-åwýp!W
+Utility Functions Module
 """
 from utils.hash import compute_file_hash, compute_text_hash
 from utils.text_clean import clean_text, remove_extra_whitespace, normalize_unicode

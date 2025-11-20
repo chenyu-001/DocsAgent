@@ -1,12 +1,12 @@
-"""Le!‹!W"""
+"""Embedder Module"""
 from services.embedder.base import BaseEmbedder
 from services.embedder.local_bge_embedder import BGEEmbedder
 from api.config import settings
 
 
 def get_embedder() -> BaseEmbedder:
-    """·ÖLe!‹ž‹"""
+    """Get configured embedder instance"""
     if settings.EMBEDDING_MODEL_TYPE == "bge":
         return BGEEmbedder()
     else:
-        raise ValueError(f"/„Le!‹{‹: {settings.EMBEDDING_MODEL_TYPE}")
+        raise ValueError(f"Unsupported embedding model type: {settings.EMBEDDING_MODEL_TYPE}")
