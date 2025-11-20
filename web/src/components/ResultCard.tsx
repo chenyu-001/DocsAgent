@@ -7,10 +7,10 @@ interface ResultCardProps {
 }
 
 export default function ResultCard({ result, index }: ResultCardProps) {
-  // ¡—ø<¦~Ô
+  // Convert score to percentage
   const similarityPercent = Math.round(result.score * 100)
 
-  // ·Öø<¦œr
+  // Get color based on score
   const getScoreColor = (score: number) => {
     if (score >= 0.8) return 'text-green-600 bg-green-50'
     if (score >= 0.6) return 'text-blue-600 bg-blue-50'
@@ -20,23 +20,23 @@ export default function ResultCard({ result, index }: ResultCardProps) {
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-      {/* 4è */}
+      {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center space-x-2">
           <FileText className="w-5 h-5 text-blue-600" />
           <span className="text-sm font-medium text-gray-900">
-            Óœ #{index + 1}
+            Result #{index + 1}
           </span>
           <span className="text-xs text-gray-500">
-            ‡c ID: {result.document_id}
+            Doc ID: {result.document_id}
           </span>
         </div>
         <div className={`px-2 py-1 rounded-full text-xs font-medium ${getScoreColor(result.score)}`}>
-          {similarityPercent}% 9M
+          {similarityPercent}% Match
         </div>
       </div>
 
-      {/* …¹ */}
+      {/* Content */}
       <div className="text-gray-700 text-sm leading-relaxed">
         {result.text.length > 300 ? (
           <>
@@ -48,10 +48,10 @@ export default function ResultCard({ result, index }: ResultCardProps) {
         )}
       </div>
 
-      {/* •èáo */}
+      {/* Footer metadata */}
       <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-        <span>W ID: {result.chunk_id}</span>
-        <span>ø<¦: {result.score.toFixed(4)}</span>
+        <span>Chunk ID: {result.chunk_id}</span>
+        <span>Score: {result.score.toFixed(4)}</span>
       </div>
     </div>
   )

@@ -25,21 +25,21 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
 
     try {
       if (isLogin) {
-        // {U
+        // Login
         await authApi.login({
           username: formData.username,
           password: formData.password,
         })
         onSuccess()
       } else {
-        // èŒ
+        // Register
         await authApi.register({
           username: formData.username,
           email: formData.email!,
           password: formData.password,
           full_name: formData.full_name,
         })
-        // èŒŸê¨{U
+        // Auto login after registration
         await authApi.login({
           username: formData.username,
           password: formData.password,
@@ -47,7 +47,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
         onSuccess()
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || err.response?.data?.detail || 'Í\1%')
+      setError(err.response?.data?.error || err.response?.data?.detail || 'Operation failed')
     } finally {
       setLoading(false)
     }
@@ -56,15 +56,15 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
   return (
     <div className="w-full max-w-md mx-auto">
       <div className="bg-white shadow-xl rounded-lg p-8">
-        {/* ˜ */}
+        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            =Ú DocsAgent
+            Welcome to DocsAgent
           </h1>
-          <p className="text-gray-600">‡cã:hº</p>
+          <p className="text-gray-600">Document Understanding AI</p>
         </div>
 
-        {/* b{U/èŒ */}
+        {/* Toggle Login/Register */}
         <div className="flex mb-6 bg-gray-100 rounded-lg p-1">
           <button
             onClick={() => setIsLogin(true)}
@@ -75,7 +75,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
             }`}
           >
             <LogIn className="inline-block w-4 h-4 mr-2" />
-            {U
+            Login
           </button>
           <button
             onClick={() => setIsLogin(false)}
@@ -86,22 +86,22 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
             }`}
           >
             <UserPlus className="inline-block w-4 h-4 mr-2" />
-            èŒ
+            Register
           </button>
         </div>
 
-        {/* hU */}
+        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              (7
+              Username
             </label>
             <input
               type="text"
               value={formData.username}
               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="÷“e(7"
+              placeholder="Enter username"
               required
             />
           </div>
@@ -110,28 +110,28 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  ®±
+                  Email
                 </label>
                 <input
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="÷“e®±"
+                  placeholder="Enter email"
                   required
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Óï		
+                  Full Name
                 </label>
                 <input
                   type="text"
                   value={formData.full_name}
                   onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="÷“eÓ"
+                  placeholder="Enter full name (optional)"
                 />
               </div>
             </>
@@ -139,14 +139,14 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Æ
+              Password
             </label>
             <input
               type="password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="÷“eÆ"
+              placeholder="Enter password"
               required
             />
           </div>
@@ -162,18 +162,18 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
             disabled={loading}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            {loading ? '-...' : isLogin ? '{U' : 'èŒ'}
+            {loading ? 'Processing...' : isLogin ? 'Login' : 'Register'}
           </button>
         </form>
 
-        {/* Ð:áo */}
+        {/* Switch mode prompt */}
         <p className="text-center text-sm text-gray-500 mt-6">
-          {isLogin ? '–!(' : 'ò	&÷'}
+          {isLogin ? "Don't have an account?" : 'Already have an account?'}
           <button
             onClick={() => setIsLogin(!isLogin)}
             className="text-blue-600 hover:underline ml-1"
           >
-            {isLogin ? 'ËsèŒ' : 'ÔÞ{U'}
+            {isLogin ? 'Register now' : 'Login here'}
           </button>
         </p>
       </div>
