@@ -1,11 +1,11 @@
-"""‡,G¡"""
+"""Text Chunking Service"""
 from typing import List
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from api.config import settings
 
 
 class TextChunker:
-    """‡,Gh"""
+    """Text chunking class"""
 
     def __init__(self, chunk_size: int = None, chunk_overlap: int = None):
         self.chunk_size = chunk_size or settings.CHUNK_SIZE
@@ -13,18 +13,18 @@ class TextChunker:
         self.splitter = RecursiveCharacterTextSplitter(
             chunk_size=self.chunk_size,
             chunk_overlap=self.chunk_overlap,
-            separators=["\n\n", "\n", "", "", "", ".", "!", "?", " ", ""],
+            separators=["\n\n", "\n", "ã€‚", "ï¼", "ï¼Ÿ", ".", "!", "?", " ", ""],
         )
 
     def chunk_text(self, text: str) -> List[str]:
         """
-        ‡,:*W
+        Split text into chunks
 
         Args:
-            text: “e‡,
+            text: Input text
 
         Returns:
-            ‡,Wh
+            List of text chunks
         """
         if not text or not text.strip():
             return []
@@ -33,12 +33,12 @@ class TextChunker:
         return [chunk.strip() for chunk in chunks if chunk.strip()]
 
 
-# h@U‹
+# Global singleton instance
 _chunker_instance = None
 
 
 def get_chunker() -> TextChunker:
-    """·Ö‡,Ghž‹"""
+    """Get global text chunker instance"""
     global _chunker_instance
     if _chunker_instance is None:
         _chunker_instance = TextChunker()

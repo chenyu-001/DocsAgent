@@ -1,5 +1,5 @@
 """
-ác!ã
+Document Models
 """
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum, BigInteger, JSON
@@ -9,17 +9,16 @@ import enum
 
 
 class DocumentStatus(str, enum.Enum):
-    """ác∂ö>"""
-    UPLOADING = "uploading"      # 
- -
-    PARSING = "parsing"          # „ê-
-    EMBEDDING = "embedding"      # œ-
-    READY = "ready"              # 1Í
-    FAILED = "failed"            # 1%
+    """Document status enumeration"""
+    UPLOADING = "uploading"      # Uploading
+    PARSING = "parsing"          # Parsing
+    EMBEDDING = "embedding"      # Generating embeddings
+    READY = "ready"              # Ready
+    FAILED = "failed"            # Failed
 
 
 class DocumentType(str, enum.Enum):
-    """ác{ãö>"""
+    """Document type enumeration"""
     PDF = "pdf"
     DOCX = "docx"
     PPTX = "pptx"
@@ -31,47 +30,47 @@ class DocumentType(str, enum.Enum):
 
 
 class Document(Base):
-    """ách"""
+    """Document table"""
     __tablename__ = "documents"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
 
-    # áˆ·o
-    filename = Column(String(255), nullable=False, comment="üÀáˆ")
-    file_hash = Column(String(64), unique=True, index=True, nullable=False, comment="áˆ SHA256 »")
-    file_type = Column(Enum(DocumentType), nullable=False, comment="áˆ{ã")
-    file_size = Column(BigInteger, nullable=False, comment="áˆ'WÇ	")
-    mime_type = Column(String(100), nullable=True, comment="MIME {ã")
+    # Basic information
+    filename = Column(String(255), nullable=False, comment="Filename")
+    file_hash = Column(String(64), unique=True, index=True, nullable=False, comment="File SHA256 hash")
+    file_type = Column(Enum(DocumentType), nullable=False, comment="File type")
+    file_size = Column(BigInteger, nullable=False, comment="File size in bytes")
+    mime_type = Column(String(100), nullable=True, comment="MIME type")
 
-    # X®ÔÑ
-    storage_path = Column(String(500), nullable=False, comment="X®ÔÑ")
-    preview_path = Column(String(500), nullable=True, comment="Ñ»áˆÔÑ")
+    # Storage paths
+    storage_path = Column(String(500), nullable=False, comment="Storage path")
+    preview_path = Column(String(500), nullable=True, comment="Preview path")
 
-    # ácCpn
-    title = Column(String(500), nullable=True, comment="ácò")
-    author = Column(String(200), nullable=True, comment="\")
-    subject = Column(String(500), nullable=True, comment=";ò")
-    keywords = Column(Text, nullable=True, comment="s.Õ˜î	")
-    page_count = Column(Integer, nullable=True, comment="up")
-    word_count = Column(Integer, nullable=True, comment="Wp")
+    # Document metadata
+    title = Column(String(500), nullable=True, comment="Document title")
+    author = Column(String(200), nullable=True, comment="Author")
+    subject = Column(String(500), nullable=True, comment="Subject")
+    keywords = Column(Text, nullable=True, comment="Keywords comma-separated")
+    page_count = Column(Integer, nullable=True, comment="Page count")
+    word_count = Column(Integer, nullable=True, comment="Word count")
 
-    # „ê”ú
-    parsed_text = Column(Text, nullable=True, comment="„êÑØá,")
-    metadata = Column(JSON, nullable=True, comment="ùCpnJSON	")
+    # Parsed content
+    parsed_text = Column(Text, nullable=True, comment="Parsed text content")
+    metadata = Column(JSON, nullable=True, comment="Additional metadata JSON")
 
-    # ∂
-    status = Column(Enum(DocumentStatus), default=DocumentStatus.UPLOADING, nullable=False, comment="∂")
-    error_message = Column(Text, nullable=True, comment="Ô·o")
+    # Status
+    status = Column(Enum(DocumentStatus), default=DocumentStatus.UPLOADING, nullable=False, comment="Status")
+    error_message = Column(Text, nullable=True, comment="Error message")
 
-    # @	
-    owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, comment="@	 ID")
+    # Owner
+    owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, comment="Owner user ID")
 
-    # ˆÙ3
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, comment="˙ˆÙ")
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False, comment="Ù∞ˆÙ")
-    parsed_at = Column(DateTime, nullable=True, comment="„êåˆÙ")
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, comment="Creation time")
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False, comment="Update time")
+    parsed_at = Column(DateTime, nullable=True, comment="Parsing completion time")
 
-    # s˚
+    # Relationships
     owner = relationship("User", back_populates="documents")
     chunks = relationship("Chunk", back_populates="document", cascade="all, delete-orphan")
     acl = relationship("ACL", back_populates="document", cascade="all, delete-orphan", uselist=False)
@@ -80,7 +79,7 @@ class Document(Base):
         return f"<Document(id={self.id}, filename='{self.filename}', status='{self.status}')>"
 
     def to_dict(self, include_chunks=False):
-        """lb:Wx"""
+        """Convert to dictionary"""
         result = {
             "id": self.id,
             "filename": self.filename,

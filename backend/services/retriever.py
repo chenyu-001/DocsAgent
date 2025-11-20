@@ -1,4 +1,4 @@
-"""‡cÀ"¡"""
+"""Document Retrieval Service"""
 from typing import List, Dict
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
@@ -8,7 +8,7 @@ from loguru import logger
 
 
 class DocumentRetriever:
-    """‡cÀ"h"""
+    """Document retrieval class"""
 
     def __init__(self):
         self.client = QdrantClient(url=settings.qdrant_url)
@@ -17,7 +17,7 @@ class DocumentRetriever:
         self._ensure_collection()
 
     def _ensure_collection(self):
-        """nİÆX("""
+        """Ensure collection exists"""
         collections = self.client.get_collections().collections
         exists = any(c.name == self.collection_name for c in collections)
 
@@ -29,10 +29,10 @@ class DocumentRetriever:
                     distance=Distance.COSINE
                 )
             )
-            logger.info(f" ú Qdrant Æ: {self.collection_name}")
+            logger.info(f"Created Qdrant collection: {self.collection_name}")
 
     def add_chunks(self, chunks: List[Dict]):
-        """û ‡,W0Ï“"""
+        """Add text chunks and generate embeddings"""
         if not chunks:
             return
 
@@ -53,10 +53,10 @@ class DocumentRetriever:
         ]
 
         self.client.upsert(collection_name=self.collection_name, points=points)
-        logger.info(f" û  {len(chunks)} *‡,W0Ï“")
+        logger.info(f"Added {len(chunks)} text chunks to vector database")
 
     def search(self, query: str, top_k: int = 5) -> List[Dict]:
-        """À"øs‡c"""
+        """Semantic search for documents"""
         query_vector = self.embedder.embed_text(query)
 
         results = self.client.search(
@@ -74,3 +74,15 @@ class DocumentRetriever:
             }
             for hit in results
         ]
+
+
+# Global singleton instance
+_retriever_instance = None
+
+
+def get_retriever() -> DocumentRetriever:
+    """Get global retriever instance"""
+    global _retriever_instance
+    if _retriever_instance is None:
+        _retriever_instance = DocumentRetriever()
+    return _retriever_instance
