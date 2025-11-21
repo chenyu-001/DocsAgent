@@ -10,23 +10,23 @@ import enum
 
 class DocumentStatus(str, enum.Enum):
     """Document status enumeration"""
-    UPLOADING = "uploading"      # Uploading
-    PARSING = "parsing"          # Parsing
-    EMBEDDING = "embedding"      # Generating embeddings
-    READY = "ready"              # Ready
-    FAILED = "failed"            # Failed
+    UPLOADING = "UPLOADING"      # Uploading
+    PARSING = "PARSING"          # Parsing
+    EMBEDDING = "EMBEDDING"      # Generating embeddings
+    READY = "READY"              # Ready
+    FAILED = "FAILED"            # Failed
 
 
 class DocumentType(str, enum.Enum):
     """Document type enumeration"""
-    PDF = "pdf"
-    DOCX = "docx"
-    PPTX = "pptx"
-    XLSX = "xlsx"
-    TXT = "txt"
-    MD = "md"
-    HTML = "html"
-    OTHER = "other"
+    PDF = "PDF"
+    DOCX = "DOCX"
+    PPTX = "PPTX"
+    XLSX = "XLSX"
+    TXT = "TXT"
+    MD = "MD"
+    HTML = "HTML"
+    OTHER = "OTHER"
 
 
 class Document(Base):
