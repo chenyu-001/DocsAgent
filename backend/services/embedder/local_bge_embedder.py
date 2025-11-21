@@ -33,8 +33,12 @@ class BGEEmbedder(BaseEmbedder):
 
     def _configure_hf_endpoint(self):
         self._original_hf_endpoint = os.environ.get('HF_ENDPOINT')
-        if settings.HF_ENDPOINT:
+        # Only set HF_ENDPOINT if it has a valid non-empty value
+        if settings.HF_ENDPOINT and settings.HF_ENDPOINT.strip():
             os.environ['HF_ENDPOINT'] = settings.HF_ENDPOINT
+        else:
+            # Remove HF_ENDPOINT if it's empty to avoid URL construction issues
+            os.environ.pop('HF_ENDPOINT', None)
 
     def _restore_original_hf_endpoint(self):
         if self._original_hf_endpoint is None:
