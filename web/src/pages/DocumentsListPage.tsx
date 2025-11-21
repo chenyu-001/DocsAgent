@@ -85,18 +85,18 @@ export default function DocumentsListPage() {
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
-      ready: 'bg-green-100 text-green-800',
-      parsing: 'bg-blue-100 text-blue-800',
-      embedding: 'bg-yellow-100 text-yellow-800',
-      failed: 'bg-red-100 text-red-800',
-      uploading: 'bg-gray-100 text-gray-800',
+      READY: 'bg-green-100 text-green-800',
+      PARSING: 'bg-blue-100 text-blue-800',
+      EMBEDDING: 'bg-yellow-100 text-yellow-800',
+      FAILED: 'bg-red-100 text-red-800',
+      UPLOADING: 'bg-gray-100 text-gray-800',
     }
     const labels: Record<string, string> = {
-      ready: 'Ready',
-      parsing: 'Parsing',
-      embedding: 'Embedding',
-      failed: 'Failed',
-      uploading: 'Uploading',
+      READY: 'Ready',
+      PARSING: 'Parsing',
+      EMBEDDING: 'Embedding',
+      FAILED: 'Failed',
+      UPLOADING: 'Uploading',
     }
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
@@ -107,13 +107,13 @@ export default function DocumentsListPage() {
 
   const getFileIcon = (fileType: string) => {
     const color = {
-      pdf: 'text-red-500',
-      docx: 'text-blue-500',
-      pptx: 'text-orange-500',
-      xlsx: 'text-green-500',
-      txt: 'text-gray-500',
-      md: 'text-purple-500',
-    }[fileType.toLowerCase()] || 'text-gray-500'
+      PDF: 'text-red-500',
+      DOCX: 'text-blue-500',
+      PPTX: 'text-orange-500',
+      XLSX: 'text-green-500',
+      TXT: 'text-gray-500',
+      MD: 'text-purple-500',
+    }[fileType] || 'text-gray-500'
 
     return <FileText className={`w-5 h-5 ${color}`} />
   }
@@ -157,12 +157,12 @@ export default function DocumentsListPage() {
             </div>
             <div className="bg-white rounded-lg shadow p-4">
               <div className="text-sm text-gray-600">Ready</div>
-              <div className="text-2xl font-bold text-green-600">{stats.by_status?.ready || 0}</div>
+              <div className="text-2xl font-bold text-green-600">{stats.by_status?.READY || 0}</div>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
               <div className="text-sm text-gray-600">Processing</div>
               <div className="text-2xl font-bold text-blue-600">
-                {(stats.by_status?.parsing || 0) + (stats.by_status?.embedding || 0)}
+                {(stats.by_status?.PARSING || 0) + (stats.by_status?.EMBEDDING || 0)}
               </div>
             </div>
           </div>
@@ -186,12 +186,12 @@ export default function DocumentsListPage() {
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">All Types</option>
-              <option value="pdf">PDF</option>
-              <option value="docx">Word</option>
-              <option value="pptx">PowerPoint</option>
-              <option value="xlsx">Excel</option>
-              <option value="txt">Text</option>
-              <option value="md">Markdown</option>
+              <option value="PDF">PDF</option>
+              <option value="DOCX">Word</option>
+              <option value="PPTX">PowerPoint</option>
+              <option value="XLSX">Excel</option>
+              <option value="TXT">Text</option>
+              <option value="MD">Markdown</option>
             </select>
             <select
               value={filterStatus}
@@ -199,10 +199,10 @@ export default function DocumentsListPage() {
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">All Status</option>
-              <option value="ready">Ready</option>
-              <option value="parsing">Parsing</option>
-              <option value="embedding">Embedding</option>
-              <option value="failed">Failed</option>
+              <option value="READY">Ready</option>
+              <option value="PARSING">Parsing</option>
+              <option value="EMBEDDING">Embedding</option>
+              <option value="FAILED">Failed</option>
             </select>
           </div>
         </div>
@@ -259,7 +259,7 @@ export default function DocumentsListPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-500">{doc.file_type.toUpperCase()}</span>
+                        <span className="text-sm text-gray-500">{doc.file_type}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-gray-500">{formatFileSize(doc.file_size)}</span>
