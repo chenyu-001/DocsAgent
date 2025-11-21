@@ -110,6 +110,7 @@ async def upload_document(
 
         # 7. Save chunks to database and prepare for embedding
         chunk_records = []
+        chunk_objects = []
         for idx, text in enumerate(text_chunks):
             chunk = Chunk(
                 document_id=document.id,
@@ -119,10 +120,16 @@ async def upload_document(
                 vector_id=f"doc_{document.id}_chunk_{idx}",
             )
             db.add(chunk)
+            chunk_objects.append(chunk)
+
+        # Flush to assign chunk IDs before preparing Qdrant payloads
+        db.flush()
+
+        for chunk in chunk_objects:
             chunk_records.append({
                 "chunk_id": chunk.id,
                 "document_id": document.id,
-                "text": text,
+                "text": chunk.text,
                 "vector_id": chunk.vector_id,
             })
 
