@@ -136,23 +136,35 @@ async def upload_document(
         db.commit()
 
         # 8. Generate embeddings and store to Qdrant
-        retriever = get_retriever()
-        retriever.add_chunks(chunk_records)
+        try:
+            retriever = get_retriever()
+            retriever.add_chunks(chunk_records)
 
-        document.status = DocumentStatus.READY
-        db.commit()
+            document.status = DocumentStatus.READY
+            db.commit()
 
-        logger.info(f"Document processing completed: {file.filename} ({len(text_chunks)} chunks)")
+            logger.info(f"Document processing completed: {file.filename} ({len(text_chunks)} chunks)")
 
-        return {
-            "message": "Upload successful",
-            "document_id": document.id,
-            "filename": document.filename,
-            "chunks": len(text_chunks),
-        }
+            return {
+                "message": "Upload successful",
+                "document_id": document.id,
+                "filename": document.filename,
+                "chunks": len(text_chunks),
+            }
+
+        except Exception as e:
+            logger.error(f"Embedding generation failed: {e}")
+            document.status = DocumentStatus.FAILED
+            document.error_message = f"Embedding failed: {str(e)}"
+            db.commit()
+            raise HTTPException(status_code=500, detail=f"Embedding generation failed: {str(e)}")
 
     except Exception as e:
         logger.error(f"Upload failed: {e}")
+        if 'document' in locals() and document.status == DocumentStatus.EMBEDDING:
+            document.status = DocumentStatus.FAILED
+            document.error_message = str(e)
+            db.commit()
         raise HTTPException(status_code=500, detail=str(e))
 
 
