@@ -10,13 +10,11 @@ export default function SearchPage() {
   const navigate = useNavigate()
   const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
-  const [query, setQuery] = useState('')
   const [searched, setSearched] = useState(false)
   const [answer, setAnswer] = useState('')
 
   const handleSearch = async (searchQuery: string) => {
     setLoading(true)
-    setQuery(searchQuery)
     setSearched(true)
     setAnswer('')
     setResults([])
