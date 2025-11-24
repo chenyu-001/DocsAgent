@@ -18,7 +18,7 @@ qdrant-client==1.12.1
 # ---------- Authentication ----------
 python-jose[cryptography]==3.5.0
 passlib[bcrypt]==1.7.4
-bcrypt==4.2.1
+bcrypt==3.2.2  # Compatible with passlib 1.7.4 (bcrypt 4.x removed __about__)
 python-dotenv==1.2.1
 
 # ---------- Document Parsing ----------

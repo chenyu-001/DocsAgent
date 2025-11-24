@@ -2,8 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SearchBar from '../components/SearchBar'
 import ResultCard from '../components/ResultCard'
-import axios from 'axios'
-import { qaApi, searchApi, authApi } from '../api/client'
+import { qaApi, authApi } from '../api/client'
 import type { SearchResult } from '../api/types'
 import { Upload, LogOut, FileText, FolderOpen } from 'lucide-react'
 
@@ -29,7 +28,7 @@ export default function SearchPage() {
       })
       setAnswer(response.answer)
       setResults(response.sources)
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('Search failed:', error)
 
       if (axios.isAxiosError(error) && error.response?.status === 404) {

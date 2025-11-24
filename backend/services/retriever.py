@@ -41,12 +41,13 @@ class DocumentRetriever:
 
         points = [
             PointStruct(
-                id=chunk["vector_id"],
+                id=chunk["chunk_id"],  # Use integer chunk_id as Qdrant point ID
                 vector=emb.tolist(),
                 payload={
                     "chunk_id": chunk["chunk_id"],
                     "document_id": chunk["document_id"],
                     "text": chunk["text"],
+                    "vector_id": chunk["vector_id"],  # Keep vector_id in payload for reference
                 }
             )
             for chunk, emb in zip(chunks, embeddings)

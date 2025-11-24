@@ -36,6 +36,7 @@ class User(Base):
 
     # Relationships
     documents = relationship("Document", back_populates="owner", cascade="all, delete-orphan")
+    folders = relationship("Folder", back_populates="owner", cascade="all, delete-orphan")
     query_logs = relationship("QueryLog", back_populates="user", cascade="all, delete-orphan")
     operation_logs = relationship("OperationLog", back_populates="user", cascade="all, delete-orphan")
     acl_rules = relationship("ACLRule", back_populates="user", cascade="all, delete-orphan")
