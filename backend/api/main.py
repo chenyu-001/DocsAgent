@@ -1,7 +1,7 @@
 """
 DocsAgent Main Application Entry
 """
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from sqlalchemy.orm import Session
@@ -74,11 +74,11 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     # Check if user already exists
     existing_user = db.query(User).filter(User.username == user_data.username).first()
     if existing_user:
-        return {"error": "Username already exists"}
+        raise HTTPException(status_code=400, detail="Username already exists")
 
     existing_email = db.query(User).filter(User.email == user_data.email).first()
     if existing_email:
-        return {"error": "Email already in use"}
+        raise HTTPException(status_code=400, detail="Email already in use")
 
     # Create new user
     new_user = User(
@@ -100,7 +100,7 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
     """User login"""
     user = authenticate_user(db, user_data.username, user_data.password)
     if not user:
-        return {"error": "Incorrect username or password"}
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
 
     access_token = create_access_token(data={"sub": user.username})
     logger.info(f"User logged in: {user.username}")
@@ -114,15 +114,15 @@ async def get_current_user_info(current_user: User = Depends(get_current_active_
 
 
 # ==================== Import Other Routes ====================
-from routes import upload, search, docs
+from routes import upload, search, docs, qa
 
 app.include_router(upload.router, prefix="/api", tags=["Document Upload"])
 app.include_router(search.router, prefix="/api", tags=["Document Search"])
 app.include_router(docs.router, prefix="/api", tags=["Document Management"])
+app.include_router(qa.router, prefix="/api", tags=["Question Answering"])
 
 # TODO: Add more routes later
-# from routes import qa, acl, metrics
-# app.include_router(qa.router, prefix="/api", tags=["Q&A"])
+# from routes import acl, metrics
 # app.include_router(acl.router, prefix="/api", tags=["Access Control"])
 # app.include_router(metrics.router, prefix="/api", tags=["Metrics & Logs"])
 
