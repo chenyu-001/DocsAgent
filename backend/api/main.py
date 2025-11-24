@@ -122,8 +122,7 @@ app.include_router(docs.router, prefix="/api", tags=["Document Management"])
 app.include_router(folders.router, prefix="/api", tags=["Folder Management"])
 
 # TODO: Add more routes later
-# from routes import qa, acl, metrics
-# app.include_router(qa.router, prefix="/api", tags=["Q&A"])
+# from routes import acl, metrics
 # app.include_router(acl.router, prefix="/api", tags=["Access Control"])
 # app.include_router(metrics.router, prefix="/api", tags=["Metrics & Logs"])
 

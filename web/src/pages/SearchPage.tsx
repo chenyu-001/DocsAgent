@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SearchBar from '../components/SearchBar'
 import ResultCard from '../components/ResultCard'
-import { searchApi, authApi } from '../api/client'
+import { qaApi, authApi } from '../api/client'
 import type { SearchResult } from '../api/types'
 import { Upload, LogOut, FileText, FolderOpen } from 'lucide-react'
 
@@ -12,18 +12,22 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false)
   const [query, setQuery] = useState('')
   const [searched, setSearched] = useState(false)
+  const [answer, setAnswer] = useState('')
 
   const handleSearch = async (searchQuery: string) => {
     setLoading(true)
     setQuery(searchQuery)
     setSearched(true)
+    setAnswer('')
+    setResults([])
 
     try {
-      const response = await searchApi.search({
-        query: searchQuery,
+      const response = await qaApi.ask({
+        question: searchQuery,
         top_k: 10,
       })
-      setResults(response.results)
+      setAnswer(response.answer)
+      setResults(response.sources)
     } catch (error: any) {
       console.error('Search failed:', error)
       alert('Search failed: ' + (error.response?.data?.error || error.message))
@@ -99,14 +103,12 @@ export default function SearchPage() {
 
         {/* Search Results */}
         {searched && (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Search Results
-              </h3>
+          <div className="bg-white rounded-lg shadow-md p-6 space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">智能回答</h3>
               {!loading && (
                 <span className="text-sm text-gray-500">
-                  Found {results.length} results
+                  基于 {results.length} 条相关片段生成
                 </span>
               )}
             </div>
@@ -116,22 +118,30 @@ export default function SearchPage() {
                 <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
                 <p className="mt-4 text-gray-600">Searching...</p>
               </div>
-            ) : results.length > 0 ? (
-              <div className="space-y-4">
-                {results.map((result, index) => (
-                  <ResultCard key={result.chunk_id} result={result} index={index} />
-                ))}
-              </div>
             ) : (
-              <div className="text-center py-12">
-                <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-600">
-                  No results found
-                </p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Try different keywords or upload relevant documents
-                </p>
-              </div>
+              <>
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-gray-900 leading-relaxed">
+                  {answer || '未能生成回答，请重试或调整问题。'}
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-md font-semibold text-gray-900">参考来源</h4>
+                    <span className="text-sm text-gray-500">按相关性排序</span>
+                  </div>
+                  {results.length > 0 ? (
+                    <div className="space-y-4">
+                      {results.map((result, index) => (
+                        <ResultCard key={result.chunk_id} result={result} index={index} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      未找到足够的参考内容来回答该问题。
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         )}
