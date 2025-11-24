@@ -1,22 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { documentApi } from '../api/client'
-import { FileText, Trash2, Eye, Filter, Search, Download, AlertCircle, Loader, ChevronLeft, ChevronRight } from 'lucide-react'
-
-interface Document {
-  id: number
-  filename: string
-  file_type: string
-  file_size: number
-  status: string
-  created_at: string
-  page_count: number | null
-  word_count: number | null
-}
+import { FileText, Trash2, Eye, Loader, ChevronLeft, ChevronRight } from 'lucide-react'
+import type { Document as DocumentType } from '../api/types'
 
 export default function DocumentsListPage() {
   const navigate = useNavigate()
-  const [documents, setDocuments] = useState<Document[]>([])
+  const [documents, setDocuments] = useState<DocumentType[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -77,34 +67,62 @@ export default function DocumentsListPage() {
     }
   }
 
+  const handleView = async (doc: DocumentType) => {
+    if (doc.status !== 'ready') {
+      alert('Document is still processing. Please try again once it is ready.')
+      return
+    }
+
+    try {
+      const blob = await documentApi.download(doc.id)
+      const blobUrl = URL.createObjectURL(blob)
+      window.open(blobUrl, '_blank', 'noopener,noreferrer')
+
+      // Clean up the object URL after the new tab has time to load
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 30_000)
+    } catch (error) {
+      console.error('Failed to open document:', error)
+      alert('Failed to open document')
+    }
+  }
+
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return bytes + ' B'
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB'
     return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
   }
 
-  const getStatusBadge = (status: string) => {
-    const styles: Record<string, string> = {
-      READY: 'bg-green-100 text-green-800',
-      PARSING: 'bg-blue-100 text-blue-800',
-      EMBEDDING: 'bg-yellow-100 text-yellow-800',
-      FAILED: 'bg-red-100 text-red-800',
-    }
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
-        {status}
-      </span>
-    )
+  const statusLabels: Record<DocumentType['status'], string> = {
+    ready: 'Ready',
+    parsing: 'Parsing',
+    embedding: 'Embedding',
+    uploading: 'Uploading',
+    failed: 'Failed',
   }
 
-  const getFileIcon = (fileType: string) => {
+  const statusStyles: Record<DocumentType['status'], string> = {
+    ready: 'bg-green-100 text-green-800',
+    parsing: 'bg-blue-100 text-blue-800',
+    embedding: 'bg-yellow-100 text-yellow-800',
+    uploading: 'bg-gray-100 text-gray-800',
+    failed: 'bg-red-100 text-red-800',
+  }
+
+  const getStatusBadge = (status: DocumentType['status']) => (
+    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusStyles[status] || 'bg-gray-100 text-gray-800'}`}>
+      {statusLabels[status] || status}
+    </span>
+  )
+
+  const getFileIcon = (fileType: DocumentType['file_type']) => {
     const color = {
-      PDF: 'text-red-500',
-      DOCX: 'text-blue-500',
-      PPTX: 'text-orange-500',
-      XLSX: 'text-green-500',
-      TXT: 'text-gray-500',
-      MD: 'text-purple-500',
+      pdf: 'text-red-500',
+      docx: 'text-blue-500',
+      pptx: 'text-orange-500',
+      xlsx: 'text-green-500',
+      txt: 'text-gray-500',
+      md: 'text-purple-500',
+      html: 'text-pink-500',
     }[fileType] || 'text-gray-500'
 
     return <FileText className={`w-5 h-5 ${color}`} />
@@ -149,12 +167,12 @@ export default function DocumentsListPage() {
             </div>
             <div className="bg-white rounded-lg shadow p-4">
               <div className="text-sm text-gray-600">Ready</div>
-              <div className="text-2xl font-bold text-green-600">{stats.by_status?.READY || 0}</div>
+              <div className="text-2xl font-bold text-green-600">{stats.by_status?.ready || 0}</div>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
               <div className="text-sm text-gray-600">Processing</div>
               <div className="text-2xl font-bold text-blue-600">
-                {(stats.by_status?.PARSING || 0) + (stats.by_status?.EMBEDDING || 0)}
+                {(stats.by_status?.parsing || 0) + (stats.by_status?.embedding || 0)}
               </div>
             </div>
           </div>
@@ -178,12 +196,13 @@ export default function DocumentsListPage() {
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">All Types</option>
-              <option value="PDF">PDF</option>
-              <option value="DOCX">Word</option>
-              <option value="PPTX">PowerPoint</option>
-              <option value="XLSX">Excel</option>
-              <option value="TXT">Text</option>
-              <option value="MD">Markdown</option>
+              <option value="pdf">PDF</option>
+              <option value="docx">Word</option>
+              <option value="pptx">PowerPoint</option>
+              <option value="xlsx">Excel</option>
+              <option value="txt">Text</option>
+              <option value="md">Markdown</option>
+              <option value="html">HTML</option>
             </select>
             <select
               value={filterStatus}
@@ -191,10 +210,11 @@ export default function DocumentsListPage() {
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">All Status</option>
-              <option value="READY">Ready</option>
-              <option value="PARSING">Parsing</option>
-              <option value="EMBEDDING">Embedding</option>
-              <option value="FAILED">Failed</option>
+              <option value="ready">Ready</option>
+              <option value="parsing">Parsing</option>
+              <option value="embedding">Embedding</option>
+              <option value="uploading">Uploading</option>
+              <option value="failed">Failed</option>
             </select>
           </div>
         </div>
@@ -251,7 +271,7 @@ export default function DocumentsListPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-500">{doc.file_type}</span>
+                        <span className="text-sm text-gray-500">{doc.file_type.toUpperCase()}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-gray-500">{formatFileSize(doc.file_size)}</span>
@@ -265,6 +285,13 @@ export default function DocumentsListPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={() => handleView(doc)}
+                          className="text-blue-600 hover:text-blue-800"
+                          title="View"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => handleDelete(doc.id, doc.filename)}
                           className="text-red-600 hover:text-red-900 ml-4"

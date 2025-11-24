@@ -62,6 +62,10 @@ class Settings(BaseSettings):
     EMBEDDING_DIMENSION: int = Field(default=1024, description="Vector dimension")
     EMBEDDING_BATCH_SIZE: int = Field(default=32, description="Batch size")
     EMBEDDING_DEVICE: str = Field(default="cpu", description="Device: cpu | cuda")
+    HF_ENDPOINT: Optional[str] = Field(
+        default=None,
+        description="Optional Hugging Face endpoint override (e.g. https://hf-mirror.com)",
+    )
 
     # OpenAI Embeddings Configuration (optional)
     OPENAI_API_KEY: Optional[str] = Field(default=None, description="OpenAI API Key")
