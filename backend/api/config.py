@@ -4,7 +4,7 @@ Uses pydantic-settings for configuration management
 """
 from typing import Optional
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, field_validator
 
 
 class Settings(BaseSettings):
@@ -66,6 +66,14 @@ class Settings(BaseSettings):
         default=None,
         description="Optional Hugging Face endpoint override (e.g. https://hf-mirror.com)",
     )
+
+    @field_validator('HF_ENDPOINT', mode='before')
+    @classmethod
+    def validate_hf_endpoint(cls, v):
+        """Convert empty string to None to avoid URL construction issues"""
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
 
     # OpenAI Embeddings Configuration (optional)
     OPENAI_API_KEY: Optional[str] = Field(default=None, description="OpenAI API Key")
