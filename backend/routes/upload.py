@@ -1,7 +1,8 @@
 """Document Upload Route"""
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Form
 from sqlalchemy.orm import Session
 from pathlib import Path
+from typing import Optional
 import shutil
 
 from api.db import get_db
@@ -9,6 +10,7 @@ from api.auth import get_current_active_user
 from api.config import settings
 from models.user_models import User
 from models.document_models import Document, DocumentType, DocumentStatus
+from models.folder_models import Folder
 from utils.hash import compute_file_hash
 from services.parser import DocumentParser
 from services.chunker import get_chunker
@@ -22,6 +24,7 @@ router = APIRouter()
 @router.post("/upload")
 async def upload_document(
     file: UploadFile = File(...),
+    folder_id: Optional[int] = Form(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -29,13 +32,27 @@ async def upload_document(
     Upload and process document
 
     Process flow:
-    1. Save file
-    2. Compute hash and check duplicates
-    3. Parse document
-    4. Text chunking
-    5. Generate embeddings and store in vector database
+    1. Validate folder (if provided)
+    2. Save file
+    3. Compute hash and check duplicates
+    4. Parse document
+    5. Text chunking
+    6. Generate embeddings and store in vector database
+
+    Parameters:
+    - **file**: File to upload (required)
+    - **folder_id**: Folder ID to organize document (optional)
     """
     try:
+        # 1. Validate folder if provided
+        if folder_id is not None:
+            folder = db.query(Folder).filter(
+                Folder.id == folder_id,
+                Folder.owner_id == current_user.id
+            ).first()
+
+            if not folder:
+                raise HTTPException(status_code=404, detail="Folder not found")
         # 1. Save file
         upload_dir = Path(settings.upload_path)
         upload_dir.mkdir(parents=True, exist_ok=True)
@@ -73,6 +90,7 @@ async def upload_document(
             storage_path=str(file_path),
             status=DocumentStatus.PARSING,
             owner_id=current_user.id,
+            folder_id=folder_id,
         )
         db.add(document)
         db.commit()
@@ -136,23 +154,35 @@ async def upload_document(
         db.commit()
 
         # 8. Generate embeddings and store to Qdrant
-        retriever = get_retriever()
-        retriever.add_chunks(chunk_records)
+        try:
+            retriever = get_retriever()
+            retriever.add_chunks(chunk_records)
 
-        document.status = DocumentStatus.READY
-        db.commit()
+            document.status = DocumentStatus.READY
+            db.commit()
 
-        logger.info(f"Document processing completed: {file.filename} ({len(text_chunks)} chunks)")
+            logger.info(f"Document processing completed: {file.filename} ({len(text_chunks)} chunks)")
 
-        return {
-            "message": "Upload successful",
-            "document_id": document.id,
-            "filename": document.filename,
-            "chunks": len(text_chunks),
-        }
+            return {
+                "message": "Upload successful",
+                "document_id": document.id,
+                "filename": document.filename,
+                "chunks": len(text_chunks),
+            }
+
+        except Exception as e:
+            logger.error(f"Embedding generation failed: {e}")
+            document.status = DocumentStatus.FAILED
+            document.error_message = f"Embedding failed: {str(e)}"
+            db.commit()
+            raise HTTPException(status_code=500, detail=f"Embedding generation failed: {str(e)}")
 
     except Exception as e:
         logger.error(f"Upload failed: {e}")
+        if 'document' in locals() and document.status == DocumentStatus.EMBEDDING:
+            document.status = DocumentStatus.FAILED
+            document.error_message = str(e)
+            db.commit()
         raise HTTPException(status_code=500, detail=str(e))
 
 

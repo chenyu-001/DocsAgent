@@ -5,10 +5,9 @@ Provides APIs for listing, viewing, and managing uploaded documents
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
-from pathlib import Path
-import mimetypes
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, asc
+from pathlib import Path
 from loguru import logger
 
 from api.db import get_db
@@ -25,6 +24,7 @@ async def list_documents(
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     status: Optional[DocumentStatus] = Query(None, description="Filter by status"),
     file_type: Optional[DocumentType] = Query(None, description="Filter by file type"),
+    folder_id: Optional[int] = Query(None, description="Filter by folder ID (use 'null' for root level)"),
     sort_by: str = Query("created_at", description="Sort field (created_at, filename, file_size)"),
     sort_order: str = Query("desc", description="Sort order (asc, desc)"),
     search: Optional[str] = Query(None, description="Search in filename"),
@@ -43,6 +43,11 @@ async def list_documents(
             query = query.filter(Document.status == status)
         if file_type:
             query = query.filter(Document.file_type == file_type)
+        if folder_id is not None:
+            query = query.filter(Document.folder_id == folder_id)
+        elif folder_id == "null":
+            # Special case: filter for root level documents (no folder)
+            query = query.filter(Document.folder_id == None)
         if search:
             query = query.filter(Document.filename.ilike(f"%{search}%"))
 
@@ -221,3 +226,108 @@ async def get_document_stats(
     except Exception as e:
         logger.error(f"Failed to get document stats: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
+
+
+@router.get("/documents/{document_id}/download")
+async def download_document(
+    document_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Download document file
+    """
+    try:
+        document = db.query(Document).filter(
+            Document.id == document_id,
+            Document.owner_id == current_user.id
+        ).first()
+
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        file_path = Path(document.storage_path)
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="File not found on disk")
+
+        # Get MIME type based on file extension
+        mime_types = {
+            'pdf': 'application/pdf',
+            'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'txt': 'text/plain',
+            'md': 'text/markdown',
+            'html': 'text/html',
+        }
+
+        file_ext = document.filename.split('.')[-1].lower()
+        media_type = mime_types.get(file_ext, 'application/octet-stream')
+
+        return FileResponse(
+            path=str(file_path),
+            filename=document.filename,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{document.filename}"'
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to download document: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to download document: {str(e)}")
+
+
+@router.get("/documents/{document_id}/view")
+async def view_document(
+    document_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    View document in browser (inline)
+    """
+    try:
+        document = db.query(Document).filter(
+            Document.id == document_id,
+            Document.owner_id == current_user.id
+        ).first()
+
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        file_path = Path(document.storage_path)
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="File not found on disk")
+
+        # Get MIME type based on file extension
+        mime_types = {
+            'pdf': 'application/pdf',
+            'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'txt': 'text/plain',
+            'md': 'text/markdown',
+            'html': 'text/html',
+        }
+
+        file_ext = document.filename.split('.')[-1].lower()
+        media_type = mime_types.get(file_ext, 'application/octet-stream')
+
+        return FileResponse(
+            path=str(file_path),
+            filename=document.filename,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'inline; filename="{document.filename}"'
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to view document: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to view document: {str(e)}")
+
