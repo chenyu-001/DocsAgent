@@ -94,9 +94,16 @@ export const authApi = {
 // ==================== Document API ====================
 export const documentApi = {
   // Upload document
-  upload: async (file: File, onProgress?: (progress: number) => void): Promise<UploadResponse> => {
+  upload: async (
+    file: File,
+    onProgress?: (progress: number) => void,
+    folderId?: number | null
+  ): Promise<UploadResponse> => {
     const formData = new FormData()
     formData.append('file', file)
+    if (folderId !== undefined && folderId !== null) {
+      formData.append('folder_id', folderId.toString())
+    }
 
     const response = await api.post<UploadResponse>('/api/upload', formData, {
       headers: {
@@ -118,6 +125,7 @@ export const documentApi = {
     page_size?: number
     status?: string
     file_type?: string
+    folder_id?: number | null
     search?: string
   }): Promise<{
     documents: any[]
@@ -168,6 +176,51 @@ export const qaApi = {
   // Ask question - TODO: implement backend endpoint
   ask: async (data: QARequest): Promise<QAResponse> => {
     const response = await api.post<QAResponse>('/api/qa', data)
+    return response.data
+  },
+}
+
+// ==================== Folder API ====================
+export const folderApi = {
+  // List folders
+  list: async (parentId?: number | null): Promise<any[]> => {
+    const params = parentId !== undefined ? { parent_id: parentId } : {}
+    const response = await api.get('/api/folders', { params })
+    return response.data
+  },
+
+  // Get folder tree
+  getTree: async (): Promise<any[]> => {
+    const response = await api.get('/api/folders/tree')
+    return response.data
+  },
+
+  // Create folder
+  create: async (data: {
+    name: string
+    description?: string
+    parent_id?: number | null
+  }): Promise<any> => {
+    const response = await api.post('/api/folders', data)
+    return response.data
+  },
+
+  // Update folder
+  update: async (
+    id: number,
+    data: {
+      name?: string
+      description?: string
+      parent_id?: number | null
+    }
+  ): Promise<any> => {
+    const response = await api.put(`/api/folders/${id}`, data)
+    return response.data
+  },
+
+  // Delete folder
+  delete: async (id: number): Promise<{ message: string; folder_id: number }> => {
+    const response = await api.delete(`/api/folders/${id}`)
     return response.data
   },
 }
