@@ -12,15 +12,41 @@ class BGEEmbedder(BaseEmbedder):
     """BGE (BAAI General Embedding) text embedder implementation"""
 
     def __init__(self):
-        # Configure Hugging Face mirror for China (speeds up model download)
-        os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
+        self._configure_hf_endpoint()
 
         logger.info(f"Loading BGE model: {settings.EMBEDDING_MODEL_NAME}")
-        self.model = SentenceTransformer(
+        try:
+            self.model = self._load_model()
+        except Exception as exc:
+            if settings.HF_ENDPOINT:
+                logger.warning(
+                    "Failed to load model from configured HF endpoint %s, retrying default endpoint",
+                    settings.HF_ENDPOINT,
+                    exc_info=exc,
+                )
+                self._restore_original_hf_endpoint()
+                self.model = self._load_model()
+            else:
+                raise
+
+        logger.info(f"BGE model loaded successfully. Embedding dimension: {self.dimension}")
+
+    def _configure_hf_endpoint(self):
+        self._original_hf_endpoint = os.environ.get('HF_ENDPOINT')
+        if settings.HF_ENDPOINT:
+            os.environ['HF_ENDPOINT'] = settings.HF_ENDPOINT
+
+    def _restore_original_hf_endpoint(self):
+        if self._original_hf_endpoint is None:
+            os.environ.pop('HF_ENDPOINT', None)
+        else:
+            os.environ['HF_ENDPOINT'] = self._original_hf_endpoint
+
+    def _load_model(self) -> SentenceTransformer:
+        return SentenceTransformer(
             settings.EMBEDDING_MODEL_NAME,
             device=settings.EMBEDDING_DEVICE
         )
-        logger.info(f"BGE model loaded successfully. Embedding dimension: {self.dimension}")
 
     def embed_text(self, text: str) -> np.ndarray:
         """Embed a single text string into a vector representation"""
