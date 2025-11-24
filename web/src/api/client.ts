@@ -150,6 +150,12 @@ export const documentApi = {
     return response.data
   },
 
+  // Download document
+  download: async (id: number): Promise<Blob> => {
+    const response = await api.get(`/api/documents/${id}/download`, { responseType: 'blob' })
+    return response.data
+  },
+
   // Get document statistics
   getStats: async (): Promise<{
     total_documents: number

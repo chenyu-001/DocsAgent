@@ -17,7 +17,7 @@ interface Document {
 
 export default function DocumentsListPage() {
   const navigate = useNavigate()
-  const [documents, setDocuments] = useState<Document[]>([])
+  const [documents, setDocuments] = useState<DocumentType[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -214,14 +214,29 @@ export default function DocumentsListPage() {
     )
   }
 
-  const getFileIcon = (fileType: string) => {
+  const statusStyles: Record<DocumentType['status'], string> = {
+    ready: 'bg-green-100 text-green-800',
+    parsing: 'bg-blue-100 text-blue-800',
+    embedding: 'bg-yellow-100 text-yellow-800',
+    uploading: 'bg-gray-100 text-gray-800',
+    failed: 'bg-red-100 text-red-800',
+  }
+
+  const getStatusBadge = (status: DocumentType['status']) => (
+    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusStyles[status] || 'bg-gray-100 text-gray-800'}`}>
+      {statusLabels[status] || status}
+    </span>
+  )
+
+  const getFileIcon = (fileType: DocumentType['file_type']) => {
     const color = {
-      PDF: 'text-red-500',
-      DOCX: 'text-blue-500',
-      PPTX: 'text-orange-500',
-      XLSX: 'text-green-500',
-      TXT: 'text-gray-500',
-      MD: 'text-purple-500',
+      pdf: 'text-red-500',
+      docx: 'text-blue-500',
+      pptx: 'text-orange-500',
+      xlsx: 'text-green-500',
+      txt: 'text-gray-500',
+      md: 'text-purple-500',
+      html: 'text-pink-500',
     }[fileType] || 'text-gray-500'
 
     return <FileText className={`w-5 h-5 ${color}`} />
@@ -266,12 +281,12 @@ export default function DocumentsListPage() {
             </div>
             <div className="bg-white rounded-lg shadow p-4">
               <div className="text-sm text-gray-600">Ready</div>
-              <div className="text-2xl font-bold text-green-600">{stats.by_status?.READY || 0}</div>
+              <div className="text-2xl font-bold text-green-600">{stats.by_status?.ready || 0}</div>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
               <div className="text-sm text-gray-600">Processing</div>
               <div className="text-2xl font-bold text-blue-600">
-                {(stats.by_status?.PARSING || 0) + (stats.by_status?.EMBEDDING || 0)}
+                {(stats.by_status?.parsing || 0) + (stats.by_status?.embedding || 0)}
               </div>
             </div>
           </div>
