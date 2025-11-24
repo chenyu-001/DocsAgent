@@ -62,8 +62,14 @@ class Document(Base):
     status = Column(Enum(DocumentStatus), default=DocumentStatus.UPLOADING, nullable=False, comment="Status")
     error_message = Column(Text, nullable=True, comment="Error message")
 
-    # Owner
+    # Owner and folder
     owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, comment="Owner user ID")
+    folder_id = Column(
+        Integer,
+        ForeignKey("folders.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="Folder ID (NULL for root level)"
+    )
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, comment="Creation time")
@@ -72,6 +78,7 @@ class Document(Base):
 
     # Relationships
     owner = relationship("User", back_populates="documents")
+    folder = relationship("Folder", back_populates="documents")
     chunks = relationship("Chunk", back_populates="document", cascade="all, delete-orphan")
     acl = relationship("ACL", back_populates="document", cascade="all, delete-orphan", uselist=False)
 
@@ -94,6 +101,7 @@ class Document(Base):
             "word_count": self.word_count,
             "status": self.status.value,
             "owner_id": self.owner_id,
+            "folder_id": self.folder_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "parsed_at": self.parsed_at.isoformat() if self.parsed_at else None,

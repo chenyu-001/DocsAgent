@@ -22,6 +22,7 @@ async def list_documents(
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     status: Optional[DocumentStatus] = Query(None, description="Filter by status"),
     file_type: Optional[DocumentType] = Query(None, description="Filter by file type"),
+    folder_id: Optional[int] = Query(None, description="Filter by folder ID (use 'null' for root level)"),
     sort_by: str = Query("created_at", description="Sort field (created_at, filename, file_size)"),
     sort_order: str = Query("desc", description="Sort order (asc, desc)"),
     search: Optional[str] = Query(None, description="Search in filename"),
@@ -40,6 +41,11 @@ async def list_documents(
             query = query.filter(Document.status == status)
         if file_type:
             query = query.filter(Document.file_type == file_type)
+        if folder_id is not None:
+            query = query.filter(Document.folder_id == folder_id)
+        elif folder_id == "null":
+            # Special case: filter for root level documents (no folder)
+            query = query.filter(Document.folder_id == None)
         if search:
             query = query.filter(Document.filename.ilike(f"%{search}%"))
 
