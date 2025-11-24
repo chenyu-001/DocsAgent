@@ -1,8 +1,8 @@
 /**
- * API {‹šI
+ * API {ï¿½ï¿½I
  */
 
-// ==================== (7øs ====================
+// ==================== (7ï¿½s ====================
 export interface User {
   id: number
   username: string
@@ -31,12 +31,12 @@ export interface AuthResponse {
   token_type: string
 }
 
-// ==================== ‡cøs ====================
+// ==================== ï¿½cï¿½s ====================
 export interface Document {
   id: number
   filename: string
   file_hash: string
-  file_type: 'pdf' | 'docx' | 'pptx' | 'xlsx' | 'txt' | 'md' | 'html' | 'other'
+  file_type: 'PDF' | 'DOCX' | 'PPTX' | 'XLSX' | 'TXT' | 'MD' | 'HTML' | 'OTHER'
   file_size: number
   title: string | null
   author: string | null
@@ -44,7 +44,7 @@ export interface Document {
   keywords: string | null
   page_count: number | null
   word_count: number | null
-  status: 'uploading' | 'parsing' | 'embedding' | 'ready' | 'failed'
+  status: 'UPLOADING' | 'PARSING' | 'EMBEDDING' | 'READY' | 'FAILED'
   owner_id: number
   created_at: string
   updated_at: string
@@ -58,7 +58,7 @@ export interface UploadResponse {
   chunks: number
 }
 
-// ==================== "øs ====================
+// ==================== "ï¿½s ====================
 export interface SearchRequest {
   query: string
   top_k?: number
@@ -77,7 +77,7 @@ export interface SearchResponse {
   count: number
 }
 
-// ==================== îTøs ====================
+// ==================== ï¿½Tï¿½s ====================
 export interface QARequest {
   question: string
   top_k?: number

@@ -97,8 +97,8 @@ services:
       EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-1024}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
 
-      # Hugging Face mirror for China (speeds up model downloads)
-      HF_ENDPOINT: https://hf-mirror.com
+      # Hugging Face mirror (optional, uncomment and set in .env to use a mirror)
+      # HF_ENDPOINT: ${HF_ENDPOINT}
 
       # LLM 配置 (Qwen)
       LLM_TYPE: ${LLM_TYPE:-qwen}  # qwen, openai, claude 等
