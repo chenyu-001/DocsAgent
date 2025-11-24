@@ -4,8 +4,10 @@ Provides APIs for listing, viewing, and managing uploaded documents
 """
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, asc
+from pathlib import Path
 from loguru import logger
 
 from api.db import get_db
@@ -187,3 +189,108 @@ async def get_document_stats(
     except Exception as e:
         logger.error(f"Failed to get document stats: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
+
+
+@router.get("/documents/{document_id}/download")
+async def download_document(
+    document_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Download document file
+    """
+    try:
+        document = db.query(Document).filter(
+            Document.id == document_id,
+            Document.owner_id == current_user.id
+        ).first()
+
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        file_path = Path(document.storage_path)
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="File not found on disk")
+
+        # Get MIME type based on file extension
+        mime_types = {
+            'pdf': 'application/pdf',
+            'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'txt': 'text/plain',
+            'md': 'text/markdown',
+            'html': 'text/html',
+        }
+
+        file_ext = document.filename.split('.')[-1].lower()
+        media_type = mime_types.get(file_ext, 'application/octet-stream')
+
+        return FileResponse(
+            path=str(file_path),
+            filename=document.filename,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{document.filename}"'
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to download document: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to download document: {str(e)}")
+
+
+@router.get("/documents/{document_id}/view")
+async def view_document(
+    document_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    View document in browser (inline)
+    """
+    try:
+        document = db.query(Document).filter(
+            Document.id == document_id,
+            Document.owner_id == current_user.id
+        ).first()
+
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        file_path = Path(document.storage_path)
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="File not found on disk")
+
+        # Get MIME type based on file extension
+        mime_types = {
+            'pdf': 'application/pdf',
+            'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'txt': 'text/plain',
+            'md': 'text/markdown',
+            'html': 'text/html',
+        }
+
+        file_ext = document.filename.split('.')[-1].lower()
+        media_type = mime_types.get(file_ext, 'application/octet-stream')
+
+        return FileResponse(
+            path=str(file_path),
+            filename=document.filename,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'inline; filename="{document.filename}"'
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to view document: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to view document: {str(e)}")
+

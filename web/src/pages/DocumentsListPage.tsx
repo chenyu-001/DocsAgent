@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { documentApi, folderApi } from '../api/client'
 import FolderTree from '../components/FolderTree'
-import { FileText, Trash2, Eye, Filter, Search, Download, AlertCircle, Loader, ChevronLeft, ChevronRight } from 'lucide-react'
+import { FileText, Trash2, Eye, Download, Loader, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface Document {
   id: number
@@ -90,6 +90,67 @@ export default function DocumentsListPage() {
     } catch (error) {
       console.error('Failed to delete document:', error)
       alert('Failed to delete document')
+    }
+  }
+
+  const handleView = async (id: number) => {
+    try {
+      const token = localStorage.getItem('access_token')
+      const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/documents/${id}/view`
+
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to view document')
+      }
+
+      const blob = await response.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      window.open(blobUrl, '_blank')
+
+      // Clean up blob URL after a delay
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100)
+    } catch (error) {
+      console.error('Failed to view document:', error)
+      alert('Failed to open document')
+    }
+  }
+
+  const handleDownload = async (id: number, filename: string) => {
+    try {
+      const token = localStorage.getItem('access_token')
+      const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/documents/${id}/download`
+
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to download document')
+      }
+
+      const blob = await response.blob()
+      const blobUrl = URL.createObjectURL(blob)
+
+      // Create a temporary link and click it to trigger download
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      // Clean up blob URL
+      URL.revokeObjectURL(blobUrl)
+    } catch (error) {
+      console.error('Failed to download document:', error)
+      alert('Failed to download document')
     }
   }
 
@@ -344,13 +405,29 @@ export default function DocumentsListPage() {
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button
-                              onClick={() => handleDelete(doc.id, doc.filename)}
-                              className="text-red-600 hover:text-red-900 ml-4"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleView(doc.id)}
+                                className="text-blue-600 hover:text-blue-900"
+                                title="Open in browser"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDownload(doc.id, doc.filename)}
+                                className="text-green-600 hover:text-green-900"
+                                title="Download"
+                              >
+                                <Download className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(doc.id, doc.filename)}
+                                className="text-red-600 hover:text-red-900"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
