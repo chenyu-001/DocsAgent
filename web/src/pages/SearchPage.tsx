@@ -30,7 +30,20 @@ export default function SearchPage() {
       setResults(response.sources)
     } catch (error: any) {
       console.error('Search failed:', error)
-      alert('Search failed: ' + (error.response?.data?.error || error.message))
+
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        // Backend may not yet expose the QA endpoint; fall back to plain search results
+        const fallback = await searchApi.search({ query: searchQuery, top_k: 10 })
+        setAnswer('智能回答暂不可用，以下为最相关的片段。')
+        setResults(fallback.results)
+      } else {
+        const message =
+          (axios.isAxiosError(error) &&
+            (error.response?.data as { detail?: string; error?: string })?.detail) ||
+          (axios.isAxiosError(error) && error.message) ||
+          'Unknown error'
+        alert('Search failed: ' + message)
+      }
     } finally {
       setLoading(false)
     }

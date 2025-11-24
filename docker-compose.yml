@@ -43,6 +43,8 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
+      args:
+        NODE_BASE_IMAGE: ${NODE_BASE_IMAGE:-node:20-alpine}
     container_name: docsagent-frontend
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
@@ -61,6 +63,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-python:3.11-slim}
     container_name: docsagent-backend
     ports:
       - "${BACKEND_PORT:-8000}:8000"
