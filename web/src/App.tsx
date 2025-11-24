@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage'
 import SearchPage from './pages/SearchPage'
 import DocumentPage from './pages/DocumentPage'
 import DocumentsListPage from './pages/DocumentsListPage'
+import DocumentDetailPage from './pages/DocumentDetailPage'
 
 // Protected route - requires authentication
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -61,6 +62,16 @@ function App() {
           element={
             <ProtectedRoute>
               <DocumentsListPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Document detail page */}
+        <Route
+          path="/document/:id"
+          element={
+            <ProtectedRoute>
+              <DocumentDetailPage />
             </ProtectedRoute>
           }
         />

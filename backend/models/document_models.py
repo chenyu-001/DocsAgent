@@ -10,23 +10,23 @@ import enum
 
 class DocumentStatus(str, enum.Enum):
     """Document status enumeration"""
-    UPLOADING = "uploading"      # Uploading
-    PARSING = "parsing"          # Parsing
-    EMBEDDING = "embedding"      # Generating embeddings
-    READY = "ready"              # Ready
-    FAILED = "failed"            # Failed
+    UPLOADING = "UPLOADING"      # Uploading
+    PARSING = "PARSING"          # Parsing
+    EMBEDDING = "EMBEDDING"      # Generating embeddings
+    READY = "READY"              # Ready
+    FAILED = "FAILED"            # Failed
 
 
 class DocumentType(str, enum.Enum):
     """Document type enumeration"""
-    PDF = "pdf"
-    DOCX = "docx"
-    PPTX = "pptx"
-    XLSX = "xlsx"
-    TXT = "txt"
-    MD = "md"
-    HTML = "html"
-    OTHER = "other"
+    PDF = "PDF"
+    DOCX = "DOCX"
+    PPTX = "PPTX"
+    XLSX = "XLSX"
+    TXT = "TXT"
+    MD = "MD"
+    HTML = "HTML"
+    OTHER = "OTHER"
 
 
 class Document(Base):
@@ -62,8 +62,14 @@ class Document(Base):
     status = Column(Enum(DocumentStatus), default=DocumentStatus.UPLOADING, nullable=False, comment="Status")
     error_message = Column(Text, nullable=True, comment="Error message")
 
-    # Owner
+    # Owner and folder
     owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, comment="Owner user ID")
+    folder_id = Column(
+        Integer,
+        ForeignKey("folders.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="Folder ID (NULL for root level)"
+    )
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, comment="Creation time")
@@ -72,6 +78,7 @@ class Document(Base):
 
     # Relationships
     owner = relationship("User", back_populates="documents")
+    folder = relationship("Folder", back_populates="documents")
     chunks = relationship("Chunk", back_populates="document", cascade="all, delete-orphan")
     acl = relationship("ACL", back_populates="document", cascade="all, delete-orphan", uselist=False)
 
@@ -94,6 +101,7 @@ class Document(Base):
             "word_count": self.word_count,
             "status": self.status.value,
             "owner_id": self.owner_id,
+            "folder_id": self.folder_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "parsed_at": self.parsed_at.isoformat() if self.parsed_at else None,
