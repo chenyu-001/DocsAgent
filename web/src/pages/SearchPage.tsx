@@ -31,18 +31,40 @@ export default function SearchPage() {
     } catch (error: any) {
       console.error('Search failed:', error)
 
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        // Backend may not yet expose the QA endpoint; fall back to plain search results
-        const fallback = await searchApi.search({ query: searchQuery, top_k: 10 })
-        setAnswer('智能回答暂不可用，以下为最相关的片段。')
-        setResults(fallback.results)
+      if (axios.isAxiosError(error)) {
+        // Handle timeout errors
+        if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+          setAnswer(
+            '⏱️ **请求超时**\n\n' +
+            'AI 处理时间过长，这可能是因为：\n' +
+            '- 文档内容较多，需要更长时间分析\n' +
+            '- LLM 服务响应较慢\n\n' +
+            '**建议：**\n' +
+            '1. 尝试提出更具体的问题\n' +
+            '2. 稍后重试\n' +
+            '3. 或使用下方的参考片段直接查看文档内容'
+          )
+          // Still try to get search results
+          try {
+            const fallback = await searchApi.search({ query: searchQuery, top_k: 10 })
+            setResults(fallback.results)
+          } catch (e) {
+            console.error('Fallback search also failed:', e)
+          }
+        } else if (error.response?.status === 404) {
+          // Backend may not yet expose the QA endpoint; fall back to plain search results
+          const fallback = await searchApi.search({ query: searchQuery, top_k: 10 })
+          setAnswer('智能回答暂不可用，以下为最相关的片段。')
+          setResults(fallback.results)
+        } else {
+          const message =
+            (error.response?.data as { detail?: string; error?: string })?.detail ||
+            error.message ||
+            'Unknown error'
+          alert('搜索失败: ' + message)
+        }
       } else {
-        const message =
-          (axios.isAxiosError(error) &&
-            (error.response?.data as { detail?: string; error?: string })?.detail) ||
-          (axios.isAxiosError(error) && error.message) ||
-          'Unknown error'
-        alert('Search failed: ' + message)
+        alert('搜索失败: 未知错误')
       }
     } finally {
       setLoading(false)
@@ -129,7 +151,8 @@ export default function SearchPage() {
             {loading ? (
               <div className="text-center py-12">
                 <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
-                <p className="mt-4 text-gray-600">Searching...</p>
+                <p className="mt-4 text-gray-600 font-medium">正在搜索文档并生成答案...</p>
+                <p className="mt-2 text-sm text-gray-500">AI 正在分析文档内容，这可能需要 30-60 秒</p>
               </div>
             ) : (
               <>

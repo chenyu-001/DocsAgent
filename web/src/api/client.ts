@@ -179,9 +179,12 @@ export const searchApi = {
 
 // ==================== QA API ====================
 export const qaApi = {
-  // Ask question - TODO: implement backend endpoint
+  // Ask question with longer timeout for LLM processing
   ask: async (data: QARequest): Promise<QAResponse> => {
-    const response = await api.post<QAResponse>('/api/qa', data)
+    // QA requests need longer timeout because LLM may take up to 60s
+    const response = await api.post<QAResponse>('/api/qa', data, {
+      timeout: 90000, // 90 seconds - longer than backend LLM timeout (60s)
+    })
     return response.data
   },
 }
