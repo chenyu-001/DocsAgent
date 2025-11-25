@@ -12,19 +12,10 @@ import {
   FileType,
   HardDrive
 } from 'lucide-react'
+import { DocumentStatusBadge } from '../components/DocumentStatusBadge'
+import type { Document as DocumentType } from '../api/types'
 
-interface DocumentDetail {
-  id: number
-  filename: string
-  file_type: string
-  file_size: number
-  status: string
-  title: string | null
-  author: string | null
-  page_count: number | null
-  word_count: number | null
-  created_at: string
-  updated_at: string
+interface DocumentDetail extends DocumentType {
   chunks: Array<{
     id: number
     text: string
@@ -68,20 +59,6 @@ export default function DocumentDetailPage() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString()
-  }
-
-  const getStatusBadge = (status: string) => {
-    const styles: Record<string, string> = {
-      READY: 'bg-green-100 text-green-800',
-      PARSING: 'bg-blue-100 text-blue-800',
-      EMBEDDING: 'bg-yellow-100 text-yellow-800',
-      FAILED: 'bg-red-100 text-red-800',
-    }
-    return (
-      <span className={`px-3 py-1 rounded-full text-sm font-medium ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
-        {status}
-      </span>
-    )
   }
 
   const filteredChunks = document?.chunks?.filter(chunk =>
@@ -130,7 +107,7 @@ export default function DocumentDetailPage() {
               <ArrowLeft className="w-5 h-5" />
               <span>Back</span>
             </button>
-            {getStatusBadge(document.status)}
+            <DocumentStatusBadge status={document.status} />
           </div>
         </div>
       </header>
