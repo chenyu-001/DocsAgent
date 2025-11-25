@@ -108,43 +108,6 @@ async def get_document(
         raise HTTPException(status_code=500, detail=f"Failed to get document: {str(e)}")
 
 
-@router.get("/documents/{document_id}/download")
-async def download_document(
-    document_id: int,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """
-    Download or preview a document file
-    """
-    try:
-        document = db.query(Document).filter(
-            Document.id == document_id,
-            Document.owner_id == current_user.id,
-        ).first()
-
-        if not document:
-            raise HTTPException(status_code=404, detail="Document not found")
-
-        file_path = Path(document.storage_path)
-        if not file_path.exists():
-            raise HTTPException(status_code=404, detail="Stored file is missing")
-
-        media_type = document.mime_type or mimetypes.guess_type(document.filename)[0]
-
-        return FileResponse(
-            path=file_path,
-            filename=document.filename,
-            media_type=media_type or "application/octet-stream",
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to download document: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to download document: {str(e)}")
-
-
 @router.delete("/documents/{document_id}")
 async def delete_document(
     document_id: int,
