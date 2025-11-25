@@ -135,6 +135,18 @@ curl -X POST "http://localhost:8000/api/search" \
   }'
 ```
 
+#### 5. 智能问答（需要配置 LLM API Key）
+
+```bash
+curl -X POST "http://localhost:8000/api/qa" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "文档中关于部署的步骤有哪些？",
+    "top_k": 5
+  }'
+```
+
 ## 📁 项目结构
 
 ```
@@ -236,7 +248,17 @@ LLM_MODEL_NAME=claude-3-5-sonnet-20241022
 
 ## 🐛 常见问题
 
-### 1. 模型下载慢
+### 1. 智能问答功能报错
+
+如果使用智能问答功能时看到"生成回答时出现问题，请稍后重试"，通常是因为：
+
+- **LLM API Key 未配置或无效**：请确保 `.env` 文件中的 `LLM_API_KEY` 已配置为有效的 API Key
+- **API 额度不足**：检查通义千问账户是否有足够的调用额度
+- **网络连接问题**：确认服务器能够访问 `https://dashscope.aliyuncs.com`
+
+检索功能（搜索文档）不需要 LLM API，即使没有配置 API Key 也能正常使用。
+
+### 2. 模型下载慢
 
 BGE 模型会从 Hugging Face 下载。国内用户可设置镜像：
 
@@ -244,7 +266,7 @@ BGE 模型会从 Hugging Face 下载。国内用户可设置镜像：
 export HF_ENDPOINT=https://hf-mirror.com
 ```
 
-### 2. 内存不足
+### 3. 内存不足
 
 BGE-large 模型需要约 2GB 内存。如果内存有限，可使用更小的模型：
 
@@ -252,7 +274,7 @@ BGE-large 模型需要约 2GB 内存。如果内存有限，可使用更小的�
 EMBEDDING_MODEL_NAME=BAAI/bge-small-zh-v1.5  # 约 100MB
 ```
 
-### 3. GPU 加速
+### 4. GPU 加速
 
 如果有 GPU，可启用 CUDA 加速：
 
@@ -262,8 +284,9 @@ EMBEDDING_DEVICE=cuda
 
 ## 📝 TODO
 
-- [ ] 实现 QA（问答）接口
-- [ ] 添加文档列表和管理功能
+- [x] 实现 QA（问答）接口
+- [x] 添加文档列表和管理功能
+- [x] 添加文件夹组织功能
 - [ ] 支持更多文件格式（图片 OCR）
 - [ ] 实现重排序（Reranker）
 - [ ] 完善权限控制（ACL）
