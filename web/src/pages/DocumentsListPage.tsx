@@ -3,17 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { documentApi, folderApi } from '../api/client'
 import FolderTree from '../components/FolderTree'
 import { FileText, Trash2, Eye, Download, Loader, ChevronLeft, ChevronRight } from 'lucide-react'
-
-interface Document {
-  id: number
-  filename: string
-  file_type: string
-  file_size: number
-  status: string
-  created_at: string
-  page_count: number | null
-  word_count: number | null
-}
+import { DocumentStatusBadge } from '../components/DocumentStatusBadge'
+import type { Document as DocumentType } from '../api/types'
 
 export default function DocumentsListPage() {
   const navigate = useNavigate()
@@ -192,51 +183,16 @@ export default function DocumentsListPage() {
     return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
   }
 
-  const getStatusBadge = (status: string) => {
-    const styles: Record<string, string> = {
-      READY: 'bg-green-100 text-green-800',
-      PARSING: 'bg-blue-100 text-blue-800',
-      EMBEDDING: 'bg-yellow-100 text-yellow-800',
-      FAILED: 'bg-red-100 text-red-800',
-      UPLOADING: 'bg-gray-100 text-gray-800',
-    }
-    const labels: Record<string, string> = {
-      READY: 'Ready',
-      PARSING: 'Parsing',
-      EMBEDDING: 'Embedding',
-      FAILED: 'Failed',
-      UPLOADING: 'Uploading',
-    }
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
-        {labels[status] || status}
-      </span>
-    )
-  }
-
-  const statusStyles: Record<DocumentType['status'], string> = {
-    ready: 'bg-green-100 text-green-800',
-    parsing: 'bg-blue-100 text-blue-800',
-    embedding: 'bg-yellow-100 text-yellow-800',
-    uploading: 'bg-gray-100 text-gray-800',
-    failed: 'bg-red-100 text-red-800',
-  }
-
-  const getStatusBadge = (status: DocumentType['status']) => (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusStyles[status] || 'bg-gray-100 text-gray-800'}`}>
-      {statusLabels[status] || status}
-    </span>
-  )
-
   const getFileIcon = (fileType: DocumentType['file_type']) => {
     const color = {
-      pdf: 'text-red-500',
-      docx: 'text-blue-500',
-      pptx: 'text-orange-500',
-      xlsx: 'text-green-500',
-      txt: 'text-gray-500',
-      md: 'text-purple-500',
-      html: 'text-pink-500',
+      PDF: 'text-red-500',
+      DOCX: 'text-blue-500',
+      PPTX: 'text-orange-500',
+      XLSX: 'text-green-500',
+      TXT: 'text-gray-500',
+      MD: 'text-purple-500',
+      HTML: 'text-pink-500',
+      OTHER: 'text-gray-500',
     }[fileType] || 'text-gray-500'
 
     return <FileText className={`w-5 h-5 ${color}`} />
@@ -412,7 +368,7 @@ export default function DocumentsListPage() {
                             <span className="text-sm text-gray-500">{formatFileSize(doc.file_size)}</span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            {getStatusBadge(doc.status)}
+                            <DocumentStatusBadge status={doc.status} />
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className="text-sm text-gray-500">

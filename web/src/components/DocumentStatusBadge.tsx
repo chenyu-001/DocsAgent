@@ -4,11 +4,11 @@ const STATUS_META: Record<
   DocumentType['status'],
   { label: string; className: string }
 > = {
-  ready: { label: 'Ready', className: 'bg-green-100 text-green-800' },
-  parsing: { label: 'Parsing', className: 'bg-blue-100 text-blue-800' },
-  embedding: { label: 'Embedding', className: 'bg-yellow-100 text-yellow-800' },
-  uploading: { label: 'Uploading', className: 'bg-gray-100 text-gray-800' },
-  failed: { label: 'Failed', className: 'bg-red-100 text-red-800' },
+  READY: { label: 'Ready', className: 'bg-green-100 text-green-800' },
+  PARSING: { label: 'Parsing', className: 'bg-blue-100 text-blue-800' },
+  EMBEDDING: { label: 'Embedding', className: 'bg-yellow-100 text-yellow-800' },
+  UPLOADING: { label: 'Uploading', className: 'bg-gray-100 text-gray-800' },
+  FAILED: { label: 'Failed', className: 'bg-red-100 text-red-800' },
 }
 
 type Props = {
