@@ -55,6 +55,7 @@ def init_db():
     from models import (
         User,
         Document,
+        Folder,
         Chunk,
         ACL,
         ACLRule,

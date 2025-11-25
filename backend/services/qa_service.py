@@ -16,12 +16,7 @@ class QAService:
 
     def __init__(self):
         self.retriever = get_retriever()
-
-        try:
-            self.llm = get_llm_client()
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("LLM client unavailable, falling back to retrieval-only answers: %s", exc)
-            self.llm = None
+        self.llm = get_llm_client()
 
     def _build_context(self, hits: List[Dict]) -> str:
         """Create a numbered context block for the LLM prompt."""
@@ -47,16 +42,6 @@ class QAService:
             }
 
         context = self._build_context(hits)
-
-        if not self.llm:
-            return {
-                "question": question,
-                "answer": "尚未启用智能回答，以下为检索到的参考片段。",
-                "sources": hits,
-                "retrieval_time": retrieval_time,
-                "llm_time": 0.0,
-                "total_time": retrieval_time,
-            }
 
         llm_start = time.perf_counter()
         try:

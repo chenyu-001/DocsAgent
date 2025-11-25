@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { documentApi, authApi } from '../api/client'
-import { Upload, ArrowLeft, FileText, CheckCircle, AlertCircle, Loader } from 'lucide-react'
+import { documentApi, folderApi, authApi } from '../api/client'
+import { Upload, ArrowLeft, FileText, CheckCircle, AlertCircle, Loader, Folder } from 'lucide-react'
 
 export default function DocumentPage() {
   const navigate = useNavigate()
@@ -9,6 +9,33 @@ export default function DocumentPage() {
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
+  const [folders, setFolders] = useState<any[]>([])
+  const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null)
+
+  useEffect(() => {
+    fetchFolders()
+  }, [])
+
+  const fetchFolders = async () => {
+    try {
+      const response = await folderApi.getTree()
+      setFolders(flattenFolders(response))
+    } catch (error) {
+      console.error('Failed to fetch folders:', error)
+    }
+  }
+
+  // Flatten folder tree for dropdown
+  const flattenFolders = (folders: any[], level = 0): any[] => {
+    const result: any[] = []
+    folders.forEach((folder) => {
+      result.push({ ...folder, level })
+      if (folder.children && folder.children.length > 0) {
+        result.push(...flattenFolders(folder.children, level + 1))
+      }
+    })
+    return result
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -25,9 +52,13 @@ export default function DocumentPage() {
     setResult(null)
 
     try {
-      const response = await documentApi.upload(file, (prog) => {
-        setProgress(prog)
-      })
+      const response = await documentApi.upload(
+        file,
+        (prog) => {
+          setProgress(prog)
+        },
+        selectedFolderId
+      )
       setResult({
         success: true,
         message: `Upload successful! Document processed into ${response.chunks} chunks`,
@@ -92,6 +123,32 @@ export default function DocumentPage() {
               Supported formats: PDF, Word, PowerPoint, Excel, TXT, Markdown
             </p>
           </div>
+
+          {/* Folder Selection */}
+          {folders.length > 0 && (
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="flex items-center gap-2">
+                  <Folder className="w-4 h-4" />
+                  <span>Select Folder (Optional)</span>
+                </div>
+              </label>
+              <select
+                value={selectedFolderId || ''}
+                onChange={(e) => setSelectedFolderId(e.target.value ? parseInt(e.target.value) : null)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Root / No Folder</option>
+                {folders.map((folder) => (
+                  <option key={folder.id} value={folder.id}>
+                    {'  '.repeat(folder.level)}
+                    {folder.level > 0 && '└─ '}
+                    {folder.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* File Selection */}
           <div className="mb-6">
