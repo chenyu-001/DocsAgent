@@ -56,9 +56,15 @@ export const authApi = {
   // Login
   login: async (data: LoginRequest): Promise<AuthResponse> => {
     const response = await api.post<AuthResponse>('/api/auth/login', data)
+    const payload = response.data as AuthResponse & { error?: string }
+
+    if (!payload.access_token) {
+      throw new Error(payload.error || 'Login failed')
+    }
+
     // Save token
-    localStorage.setItem('access_token', response.data.access_token)
-    return response.data
+    localStorage.setItem('access_token', payload.access_token)
+    return payload
   },
 
   // Register
@@ -133,6 +139,12 @@ export const documentApi = {
   // Delete document
   delete: async (id: number): Promise<{ message: string; document_id: number }> => {
     const response = await api.delete(`/api/documents/${id}`)
+    return response.data
+  },
+
+  // Download document
+  download: async (id: number): Promise<Blob> => {
+    const response = await api.get(`/api/documents/${id}/download`, { responseType: 'blob' })
     return response.data
   },
 
