@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
 import SearchBar from '../components/SearchBar'
 import ResultCard from '../components/ResultCard'
-import { qaApi, authApi } from '../api/client'
+import { MarkdownRenderer } from '../components/MarkdownRenderer'
+import { qaApi, authApi, searchApi } from '../api/client'
 import type { SearchResult } from '../api/types'
 import { Upload, LogOut, FileText, FolderOpen } from 'lucide-react'
 
@@ -131,8 +133,12 @@ export default function SearchPage() {
               </div>
             ) : (
               <>
-                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-gray-900 leading-relaxed">
-                  {answer || '未能生成回答，请重试或调整问题。'}
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
+                  {answer ? (
+                    <MarkdownRenderer content={answer} />
+                  ) : (
+                    <p className="text-gray-600">未能生成回答，请重试或调整问题。</p>
+                  )}
                 </div>
 
                 <div className="space-y-4">
