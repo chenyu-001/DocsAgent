@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { documentApi, folderApi } from '../api/client'
 import FolderTree from '../components/FolderTree'
-import { FileText, Trash2, Eye, Download, Loader, ChevronLeft, ChevronRight, FolderOpen } from 'lucide-react'
+import { FileText, Trash2, Download, Loader, ChevronLeft, ChevronRight, FolderOpen } from 'lucide-react'
 import { DocumentStatusBadge } from '../components/DocumentStatusBadge'
 import type { Document as DocumentType } from '../api/types'
 
@@ -119,33 +119,6 @@ export default function DocumentsListPage() {
       }
     })
     return result
-  }
-
-  const handleView = async (id: number) => {
-    try {
-      const token = localStorage.getItem('access_token')
-      const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/documents/${id}/view`
-
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to view document')
-      }
-
-      const blob = await response.blob()
-      const blobUrl = URL.createObjectURL(blob)
-      window.open(blobUrl, '_blank')
-
-      // Clean up blob URL after a delay
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 100)
-    } catch (error) {
-      console.error('Failed to view document:', error)
-      alert('Failed to open document')
-    }
   }
 
   const handleDownload = async (id: number, filename: string) => {
@@ -353,7 +326,7 @@ export default function DocumentsListPage() {
                   <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-500">No documents found</p>
                   <button
-                    onClick={() => navigate('/upload')}
+                    onClick={() => navigate('/upload', { state: { folderId: selectedFolderId } })}
                     className="mt-4 text-blue-600 hover:text-blue-700"
                   >
                     Upload your first document
@@ -415,15 +388,8 @@ export default function DocumentsListPage() {
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex items-center justify-end gap-2">
                               <button
-                                onClick={() => handleView(doc.id)}
-                                className="text-blue-600 hover:text-blue-900"
-                                title="Open in browser"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </button>
-                              <button
                                 onClick={() => handleDownload(doc.id, doc.filename)}
-                                className="text-green-600 hover:text-green-900"
+                                className="text-blue-600 hover:text-blue-900"
                                 title="Download"
                               >
                                 <Download className="w-4 h-4" />
