@@ -24,7 +24,7 @@ export default function SearchPage() {
     try {
       const response = await qaApi.ask({
         question: searchQuery,
-        top_k: 10,
+        top_k: 20, // Increased from 10 to get more comprehensive results
       })
       setAnswer(response.answer)
       setResults(response.sources)

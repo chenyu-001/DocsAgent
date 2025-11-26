@@ -142,6 +142,42 @@ async def delete_document(
         raise HTTPException(status_code=500, detail=f"Failed to delete document: {str(e)}")
 
 
+@router.patch("/documents/{document_id}/move")
+async def move_document(
+    document_id: int,
+    folder_id: Optional[int] = None,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Move document to a different folder
+    """
+    try:
+        document = db.query(Document).filter(
+            Document.id == document_id,
+            Document.owner_id == current_user.id
+        ).first()
+
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        # Update folder
+        document.folder_id = folder_id
+        db.commit()
+        db.refresh(document)
+
+        logger.info(f"User {current_user.username} moved document {document.filename} to folder {folder_id}")
+
+        return {"message": "Document moved successfully", "document_id": document_id, "folder_id": folder_id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to move document: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to move document: {str(e)}")
+
+
 @router.get("/documents/stats/summary")
 async def get_document_stats(
     current_user: User = Depends(get_current_active_user),

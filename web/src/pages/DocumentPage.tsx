@@ -1,16 +1,20 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { documentApi, folderApi, authApi } from '../api/client'
 import { Upload, ArrowLeft, FileText, CheckCircle, AlertCircle, Loader, Folder } from 'lucide-react'
 
 export default function DocumentPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
   const [folders, setFolders] = useState<any[]>([])
-  const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null)
+  // Get folder ID from navigation state, default to null
+  const [selectedFolderId, setSelectedFolderId] = useState<number | null>(
+    (location.state as any)?.folderId ?? null
+  )
 
   useEffect(() => {
     fetchFolders()

@@ -150,6 +150,14 @@ export const documentApi = {
     return response.data
   },
 
+  // Move document to folder
+  move: async (id: number, folderId: number | null): Promise<{ message: string; document_id: number; folder_id: number | null }> => {
+    const response = await api.patch(`/api/documents/${id}/move`, null, {
+      params: { folder_id: folderId },
+    })
+    return response.data
+  },
+
   // Download document
   download: async (id: number): Promise<Blob> => {
     const response = await api.get(`/api/documents/${id}/download`, { responseType: 'blob' })

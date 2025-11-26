@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { documentApi, folderApi } from '../api/client'
 import FolderTree from '../components/FolderTree'
-import { FileText, Trash2, Eye, Download, Loader, ChevronLeft, ChevronRight } from 'lucide-react'
+import { FileText, Trash2, Eye, Download, Loader, ChevronLeft, ChevronRight, FolderOpen } from 'lucide-react'
 import { DocumentStatusBadge } from '../components/DocumentStatusBadge'
 import type { Document as DocumentType } from '../api/types'
 
@@ -21,6 +21,11 @@ export default function DocumentsListPage() {
   // Folder state
   const [folders, setFolders] = useState<any[]>([])
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null)
+
+  // Move dialog state
+  const [moveDialogOpen, setMoveDialogOpen] = useState(false)
+  const [documentToMove, setDocumentToMove] = useState<DocumentType | null>(null)
+  const [targetFolderId, setTargetFolderId] = useState<number | null>(null)
 
   const pageSize = 10
 
@@ -82,6 +87,38 @@ export default function DocumentsListPage() {
       console.error('Failed to delete document:', error)
       alert('Failed to delete document')
     }
+  }
+
+  const handleMoveClick = (doc: DocumentType) => {
+    setDocumentToMove(doc)
+    setTargetFolderId(doc.folder_id)
+    setMoveDialogOpen(true)
+  }
+
+  const handleMoveConfirm = async () => {
+    if (!documentToMove) return
+
+    try {
+      await documentApi.move(documentToMove.id, targetFolderId)
+      setMoveDialogOpen(false)
+      setDocumentToMove(null)
+      fetchDocuments()
+      alert('Document moved successfully')
+    } catch (error) {
+      console.error('Failed to move document:', error)
+      alert('Failed to move document')
+    }
+  }
+
+  const flattenFolders = (folders: any[], level = 0): any[] => {
+    const result: any[] = []
+    folders.forEach((folder) => {
+      result.push({ ...folder, level })
+      if (folder.children && folder.children.length > 0) {
+        result.push(...flattenFolders(folder.children, level + 1))
+      }
+    })
+    return result
   }
 
   const handleView = async (id: number) => {
@@ -214,7 +251,7 @@ export default function DocumentsListPage() {
               <h1 className="text-2xl font-bold text-gray-900">My Documents</h1>
             </div>
             <button
-              onClick={() => navigate('/upload')}
+              onClick={() => navigate('/upload', { state: { folderId: selectedFolderId } })}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
             >
               Upload New
@@ -392,6 +429,13 @@ export default function DocumentsListPage() {
                                 <Download className="w-4 h-4" />
                               </button>
                               <button
+                                onClick={() => handleMoveClick(doc)}
+                                className="text-orange-600 hover:text-orange-900"
+                                title="Move to folder"
+                              >
+                                <FolderOpen className="w-4 h-4" />
+                              </button>
+                              <button
                                 onClick={() => handleDelete(doc.id, doc.filename)}
                                 className="text-red-600 hover:text-red-900"
                                 title="Delete"
@@ -438,6 +482,49 @@ export default function DocumentsListPage() {
           </div>
         </div>
       </div>
+
+      {/* Move Document Dialog */}
+      {moveDialogOpen && documentToMove && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Move Document
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Move "{documentToMove.filename}" to:
+            </p>
+            <select
+              value={targetFolderId ?? ''}
+              onChange={(e) => setTargetFolderId(e.target.value === '' ? null : Number(e.target.value))}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-6"
+            >
+              <option value="">Root / No Folder</option>
+              {flattenFolders(folders).map((folder) => (
+                <option key={folder.id} value={folder.id}>
+                  {'  '.repeat(folder.level)}📁 {folder.name}
+                </option>
+              ))}
+            </select>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setMoveDialogOpen(false)
+                  setDocumentToMove(null)
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleMoveConfirm}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Move
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
