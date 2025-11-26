@@ -129,8 +129,8 @@ class Settings(BaseSettings):
         return f"{self.STORAGE_PATH}/previews"
 
     # ========== Text Chunking Configuration ==========
-    CHUNK_SIZE: int = Field(default=500, description="Chunk size in characters")
-    CHUNK_OVERLAP: int = Field(default=50, description="Chunk overlap size")
+    CHUNK_SIZE: int = Field(default=1000, description="Chunk size in characters")
+    CHUNK_OVERLAP: int = Field(default=200, description="Chunk overlap size")
 
     # ========== Search Configuration ==========
     RETRIEVAL_TOP_K: int = Field(default=20, description="Initial retrieval top K")
