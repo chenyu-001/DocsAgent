@@ -25,6 +25,7 @@ router = APIRouter()
 async def upload_document(
     file: UploadFile = File(...),
     folder_id: Optional[int] = Form(None),
+    overwrite: bool = Form(False),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -72,7 +73,21 @@ async def upload_document(
         ).first()
 
         if existing_doc_by_name:
-            # Delete the old document (will cascade delete chunks and vectors)
+            # If overwrite flag is not set, ask for confirmation
+            if not overwrite:
+                file_path.unlink()  # Delete the uploaded file
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "code": "FILE_EXISTS",
+                        "message": f"File '{file.filename}' already exists in this location. Do you want to overwrite it?",
+                        "existing_document_id": existing_doc_by_name.id,
+                        "filename": file.filename,
+                        "folder_id": folder_id
+                    }
+                )
+
+            # User confirmed overwrite - delete the old document
             logger.info(f"Overwriting existing document: {file.filename} (ID: {existing_doc_by_name.id})")
 
             # Delete the old file from storage if it exists

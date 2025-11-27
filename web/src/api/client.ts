@@ -97,12 +97,16 @@ export const documentApi = {
   upload: async (
     file: File,
     onProgress?: (progress: number) => void,
-    folderId?: number | null
+    folderId?: number | null,
+    overwrite?: boolean
   ): Promise<UploadResponse> => {
     const formData = new FormData()
     formData.append('file', file)
     if (folderId !== undefined && folderId !== null) {
       formData.append('folder_id', folderId.toString())
+    }
+    if (overwrite !== undefined) {
+      formData.append('overwrite', overwrite.toString())
     }
 
     const response = await api.post<UploadResponse>('/api/upload', formData, {

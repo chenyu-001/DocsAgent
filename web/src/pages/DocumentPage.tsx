@@ -15,6 +15,8 @@ export default function DocumentPage() {
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(
     (location.state as any)?.folderId ?? null
   )
+  const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false)
+  const [overwriteMessage, setOverwriteMessage] = useState('')
 
   useEffect(() => {
     fetchFolders()
@@ -48,12 +50,13 @@ export default function DocumentPage() {
     }
   }
 
-  const handleUpload = async () => {
+  const handleUpload = async (overwrite: boolean = false) => {
     if (!file) return
 
     setUploading(true)
     setProgress(0)
     setResult(null)
+    setShowOverwriteConfirm(false)
 
     try {
       const response = await documentApi.upload(
@@ -61,7 +64,8 @@ export default function DocumentPage() {
         (prog) => {
           setProgress(prog)
         },
-        selectedFolderId
+        selectedFolderId,
+        overwrite
       )
       setResult({
         success: true,
@@ -70,14 +74,39 @@ export default function DocumentPage() {
       setFile(null)
     } catch (error: any) {
       console.error('Upload failed:', error)
-      setResult({
-        success: false,
-        message: error.response?.data?.detail || error.message || 'Upload failed',
-      })
+
+      // Check if it's a file exists error (409 status)
+      if (error.response?.status === 409 && error.response?.data?.detail?.code === 'FILE_EXISTS') {
+        // Show confirmation dialog
+        setOverwriteMessage(error.response.data.detail.message)
+        setShowOverwriteConfirm(true)
+      } else {
+        // Other errors
+        const errorMessage = typeof error.response?.data?.detail === 'string'
+          ? error.response.data.detail
+          : error.response?.data?.detail?.message || error.message || 'Upload failed'
+
+        setResult({
+          success: false,
+          message: errorMessage,
+        })
+      }
     } finally {
       setUploading(false)
       setProgress(0)
     }
+  }
+
+  const handleConfirmOverwrite = () => {
+    handleUpload(true)
+  }
+
+  const handleCancelOverwrite = () => {
+    setShowOverwriteConfirm(false)
+    setResult({
+      success: false,
+      message: 'Upload cancelled',
+    })
   }
 
   const handleLogout = () => {
@@ -246,6 +275,39 @@ export default function DocumentPage() {
                     Go to search
                   </button>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Overwrite Confirmation Modal */}
+          {showOverwriteConfirm && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+                <div className="flex items-start space-x-3 mb-4">
+                  <AlertCircle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      File Already Exists
+                    </h3>
+                    <p className="text-gray-600 text-sm">
+                      {overwriteMessage}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex space-x-3 mt-6">
+                  <button
+                    onClick={handleCancelOverwrite}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmOverwrite}
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    Overwrite
+                  </button>
+                </div>
               </div>
             </div>
           )}
