@@ -218,8 +218,8 @@ async def get_document_stats(
         return {
             "total_documents": total_docs,
             "total_storage_bytes": total_size,
-            "by_status": {status.value: count for status, count in status_counts},
-            "by_type": {file_type.value: count for file_type, count in type_counts},
+            "by_status": {status.value.lower(): count for status, count in status_counts},
+            "by_type": {file_type.value.lower(): count for file_type, count in type_counts},
         }
 
     except Exception as e:
