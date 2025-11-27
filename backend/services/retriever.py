@@ -76,6 +76,25 @@ class DocumentRetriever:
             for hit in results
         ]
 
+    def delete_document(self, document_id: int):
+        """Delete all vectors for a document"""
+        from qdrant_client.models import Filter, FieldCondition, MatchValue
+
+        # Delete all points where document_id matches
+        self.client.delete(
+            collection_name=self.collection_name,
+            points_selector=Filter(
+                must=[
+                    FieldCondition(
+                        key="document_id",
+                        match=MatchValue(value=document_id)
+                    )
+                ]
+            )
+        )
+        logger.info(f"Deleted all vectors for document {document_id}")
+
+
 
 # Global singleton instance
 _retriever_instance = None

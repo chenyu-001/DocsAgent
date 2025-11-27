@@ -46,6 +46,9 @@ export interface Document {
   word_count: number | null
   status: 'UPLOADING' | 'PARSING' | 'EMBEDDING' | 'READY' | 'FAILED'
   owner_id: number
+  folder_id: number | null
+  folder_path: string
+  folder_name: string
   created_at: string
   updated_at: string
   parsed_at: string | null
