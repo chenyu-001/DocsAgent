@@ -102,6 +102,8 @@ class Document(Base):
             "status": self.status.value,
             "owner_id": self.owner_id,
             "folder_id": self.folder_id,
+            "folder_path": self.folder.path if self.folder else "/",
+            "folder_name": self.folder.name if self.folder else "Root",
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "parsed_at": self.parsed_at.isoformat() if self.parsed_at else None,

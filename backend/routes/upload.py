@@ -64,11 +64,41 @@ async def upload_document(
         # 2. Compute file hash
         file_hash = compute_file_hash(file_path)
 
-        # Check if file already exists
-        existing_doc = db.query(Document).filter(Document.file_hash == file_hash).first()
-        if existing_doc:
+        # Check if file with same name and folder already exists (overwrite mode)
+        existing_doc_by_name = db.query(Document).filter(
+            Document.filename == file.filename,
+            Document.folder_id == folder_id,
+            Document.owner_id == current_user.id
+        ).first()
+
+        if existing_doc_by_name:
+            # Delete the old document (will cascade delete chunks and vectors)
+            logger.info(f"Overwriting existing document: {file.filename} (ID: {existing_doc_by_name.id})")
+
+            # Delete the old file from storage if it exists
+            old_file_path = Path(existing_doc_by_name.storage_path)
+            if old_file_path.exists():
+                old_file_path.unlink()
+
+            # Delete vectors from Qdrant
+            try:
+                retriever = get_retriever()
+                retriever.delete_document(existing_doc_by_name.id)
+            except Exception as e:
+                logger.warning(f"Failed to delete vectors for document {existing_doc_by_name.id}: {e}")
+
+            # Delete the document record (will cascade delete chunks)
+            db.delete(existing_doc_by_name)
+            db.commit()
+
+        # Check if file with same hash already exists (duplicate content)
+        existing_doc_by_hash = db.query(Document).filter(
+            Document.file_hash == file_hash,
+            Document.owner_id == current_user.id
+        ).first()
+        if existing_doc_by_hash:
             file_path.unlink()  # Delete duplicate file
-            return {"message": "File already exists", "document_id": existing_doc.id}
+            return {"message": "File already exists", "document_id": existing_doc_by_hash.id}
 
         # 3. Determine file type
         suffix = file.filename.split(".")[-1].lower()
