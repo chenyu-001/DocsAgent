@@ -334,28 +334,37 @@ export default function DocumentsListPage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="min-w-full table-fixed">
+                    <colgroup>
+                      <col className="w-[35%]" />
+                      <col className="w-[15%]" />
+                      <col className="w-[8%]" />
+                      <col className="w-[10%]" />
+                      <col className="w-[10%]" />
+                      <col className="w-[12%]" />
+                      <col className="w-[10%]" />
+                    </colgroup>
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Document
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Path
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Type
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Size
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Status
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Uploaded
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Actions
                         </th>
                       </tr>
@@ -363,53 +372,58 @@ export default function DocumentsListPage() {
                     <tbody className="bg-white divide-y divide-gray-200">
                       {documents.map((doc) => (
                         <tr key={doc.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              {getFileIcon(doc.file_type)}
+                          <td className="px-4 py-3">
+                            <div className="flex items-center min-w-0">
+                              <div className="flex-shrink-0">
+                                {getFileIcon(doc.file_type)}
+                              </div>
                               <button
                                 onClick={() => navigate(`/document/${doc.id}`)}
-                                className="ml-2 text-sm font-medium text-gray-900 hover:text-blue-600"
+                                className="ml-2 text-sm font-medium text-gray-900 hover:text-blue-600 truncate"
+                                title={doc.filename}
                               >
                                 {doc.filename}
                               </button>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-500">{doc.folder_path || '/'}</span>
+                          <td className="px-4 py-3">
+                            <span className="text-sm text-gray-600 truncate block" title={doc.folder_path || '/'}>
+                              {doc.folder_path || '/'}
+                            </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-500">{doc.file_type}</span>
+                          <td className="px-4 py-3">
+                            <span className="text-sm text-gray-600">{doc.file_type}</span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-500">{formatFileSize(doc.file_size)}</span>
+                          <td className="px-4 py-3">
+                            <span className="text-sm text-gray-600">{formatFileSize(doc.file_size)}</span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 py-3">
                             <DocumentStatusBadge status={doc.status} />
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-500">
+                          <td className="px-4 py-3">
+                            <span className="text-sm text-gray-600">
                               {new Date(doc.created_at).toLocaleDateString()}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-2">
                               <button
                                 onClick={() => handleDownload(doc.id, doc.filename)}
-                                className="text-blue-600 hover:text-blue-900"
+                                className="text-blue-600 hover:text-blue-900 transition-colors"
                                 title="Download"
                               >
                                 <Download className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleMoveClick(doc)}
-                                className="text-orange-600 hover:text-orange-900"
+                                className="text-orange-600 hover:text-orange-900 transition-colors"
                                 title="Move to folder"
                               >
                                 <FolderOpen className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleDelete(doc.id, doc.filename)}
-                                className="text-red-600 hover:text-red-900"
+                                className="text-red-600 hover:text-red-900 transition-colors"
                                 title="Delete"
                               >
                                 <Trash2 className="w-4 h-4" />
