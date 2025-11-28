@@ -4,6 +4,9 @@ import { documentApi, folderApi } from '../api/client'
 import FolderTree from '../components/FolderTree'
 import { FileText, Trash2, Download, Loader, ChevronLeft, ChevronRight, FolderOpen } from 'lucide-react'
 import { DocumentStatusBadge } from '../components/DocumentStatusBadge'
+import ConfirmDialog from '../components/ConfirmDialog'
+import Toast, { ToastType } from '../components/Toast'
+import InputDialog from '../components/InputDialog'
 import type { Document as DocumentType } from '../api/types'
 
 export default function DocumentsListPage() {
@@ -26,6 +29,27 @@ export default function DocumentsListPage() {
   const [moveDialogOpen, setMoveDialogOpen] = useState(false)
   const [documentToMove, setDocumentToMove] = useState<DocumentType | null>(null)
   const [targetFolderId, setTargetFolderId] = useState<number | null>(null)
+
+  // Confirmation dialogs
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: number | null; filename: string }>({
+    isOpen: false,
+    id: null,
+    filename: '',
+  })
+  const [deleteFolderConfirm, setDeleteFolderConfirm] = useState<{
+    isOpen: boolean
+    id: number | null
+    name: string
+  }>({ isOpen: false, id: null, name: '' })
+
+  // Input dialog
+  const [createFolderDialog, setCreateFolderDialog] = useState<{
+    isOpen: boolean
+    parentId: number | null
+  }>({ isOpen: false, parentId: null })
+
+  // Toast notification
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null)
 
   const pageSize = 10
 
@@ -76,16 +100,22 @@ export default function DocumentsListPage() {
     }
   }
 
-  const handleDelete = async (id: number, filename: string) => {
-    if (!confirm(`Are you sure you want to delete "${filename}"?`)) return
+  const handleDelete = (id: number, filename: string) => {
+    setDeleteConfirm({ isOpen: true, id, filename })
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm.id) return
 
     try {
-      await documentApi.delete(id)
+      await documentApi.delete(deleteConfirm.id)
+      setDeleteConfirm({ isOpen: false, id: null, filename: '' })
       fetchDocuments()
       fetchStats()
+      setToast({ message: 'Document deleted successfully', type: 'success' })
     } catch (error) {
       console.error('Failed to delete document:', error)
-      alert('Failed to delete document')
+      setToast({ message: 'Failed to delete document', type: 'error' })
     }
   }
 
@@ -103,10 +133,10 @@ export default function DocumentsListPage() {
       setMoveDialogOpen(false)
       setDocumentToMove(null)
       fetchDocuments()
-      alert('Document moved successfully')
+      setToast({ message: 'Document moved successfully', type: 'success' })
     } catch (error) {
       console.error('Failed to move document:', error)
-      alert('Failed to move document')
+      setToast({ message: 'Failed to move document', type: 'error' })
     }
   }
 
@@ -149,41 +179,51 @@ export default function DocumentsListPage() {
 
       // Clean up blob URL
       URL.revokeObjectURL(blobUrl)
+      setToast({ message: 'Document downloaded successfully', type: 'success' })
     } catch (error) {
       console.error('Failed to download document:', error)
-      alert('Failed to download document')
+      setToast({ message: 'Failed to download document', type: 'error' })
     }
   }
 
-  const handleCreateFolder = async (parentId: number | null) => {
-    const folderName = prompt('Enter folder name:')
-    if (!folderName) return
+  const handleCreateFolder = (parentId: number | null) => {
+    setCreateFolderDialog({ isOpen: true, parentId })
+  }
 
+  const confirmCreateFolder = async (folderName: string) => {
     try {
       await folderApi.create({
         name: folderName,
-        parent_id: parentId,
+        parent_id: createFolderDialog.parentId,
       })
+      setCreateFolderDialog({ isOpen: false, parentId: null })
       fetchFolders()
+      setToast({ message: 'Folder created successfully', type: 'success' })
     } catch (error: any) {
       console.error('Failed to create folder:', error)
-      alert(error.response?.data?.detail || 'Failed to create folder')
+      setToast({ message: error.response?.data?.detail || 'Failed to create folder', type: 'error' })
     }
   }
 
-  const handleDeleteFolder = async (folderId: number, folderName: string) => {
-    if (!confirm(`Are you sure you want to delete folder "${folderName}"? This will also delete all documents in this folder.`)) return
+  const handleDeleteFolder = (folderId: number, folderName: string) => {
+    setDeleteFolderConfirm({ isOpen: true, id: folderId, name: folderName })
+  }
+
+  const confirmDeleteFolder = async () => {
+    if (!deleteFolderConfirm.id) return
 
     try {
-      await folderApi.delete(folderId)
+      await folderApi.delete(deleteFolderConfirm.id)
+      setDeleteFolderConfirm({ isOpen: false, id: null, name: '' })
       fetchFolders()
       fetchDocuments()
-      if (selectedFolderId === folderId) {
+      if (selectedFolderId === deleteFolderConfirm.id) {
         setSelectedFolderId(null)
       }
+      setToast({ message: 'Folder deleted successfully', type: 'success' })
     } catch (error: any) {
       console.error('Failed to delete folder:', error)
-      alert(error.response?.data?.detail || 'Failed to delete folder')
+      setToast({ message: error.response?.data?.detail || 'Failed to delete folder', type: 'error' })
     }
   }
 
@@ -472,7 +512,7 @@ export default function DocumentsListPage() {
       {/* Move Document Dialog */}
       {moveDialogOpen && documentToMove && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 animate-fadeIn">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Move Document
             </h3>
@@ -497,19 +537,63 @@ export default function DocumentsListPage() {
                   setMoveDialogOpen(false)
                   setDocumentToMove(null)
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
               >
                 Cancel
               </button>
               <button
                 onClick={handleMoveConfirm}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
               >
                 Move
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Delete Document Confirmation */}
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        title="Delete Document"
+        message={`Are you sure you want to delete "${deleteConfirm.filename}"?\n\nThis action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirm({ isOpen: false, id: null, filename: '' })}
+      />
+
+      {/* Delete Folder Confirmation */}
+      <ConfirmDialog
+        isOpen={deleteFolderConfirm.isOpen}
+        title="Delete Folder"
+        message={`Are you sure you want to delete folder "${deleteFolderConfirm.name}"?\n\nThis will also delete all documents in this folder.\n\nThis action cannot be undone.`}
+        confirmText="Delete Folder"
+        cancelText="Cancel"
+        type="danger"
+        onConfirm={confirmDeleteFolder}
+        onCancel={() => setDeleteFolderConfirm({ isOpen: false, id: null, name: '' })}
+      />
+
+      {/* Create Folder Input Dialog */}
+      <InputDialog
+        isOpen={createFolderDialog.isOpen}
+        title="Create New Folder"
+        placeholder="Enter folder name..."
+        confirmText="Create"
+        cancelText="Cancel"
+        onConfirm={confirmCreateFolder}
+        onCancel={() => setCreateFolderDialog({ isOpen: false, parentId: null })}
+      />
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
     </div>
   )
