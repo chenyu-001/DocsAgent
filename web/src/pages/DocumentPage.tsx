@@ -77,19 +77,14 @@ export default function DocumentPage() {
       setProgress(0)
     } catch (error: any) {
       console.error('Upload failed:', error)
-      console.log('Error response:', error.response)
-      console.log('Error response data:', error.response?.data)
-      console.log('Error response detail:', error.response?.data?.detail)
 
       // Check if it's a file exists error (409 status)
       const detail = error.response?.data?.detail
-      const isFileExists = error.response?.status === 409 &&
-                          (detail?.code === 'FILE_EXISTS' ||
-                           (typeof detail === 'object' && detail?.code === 'FILE_EXISTS'))
+      const isFileExists = error.response?.status === 409 && detail?.code === 'FILE_EXISTS'
 
       if (isFileExists) {
         // Show confirmation dialog
-        const message = detail?.message || "File already exists. Do you want to overwrite it?"
+        const message = detail.message || "File already exists. Do you want to overwrite it?"
         setOverwriteMessage(message)
         setShowOverwriteConfirm(true)
         setUploading(false)

@@ -1,5 +1,6 @@
 """Document Upload Route"""
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Form
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from pathlib import Path
 from typing import Optional
@@ -76,14 +77,16 @@ async def upload_document(
             # If overwrite flag is not set, ask for confirmation
             if not overwrite:
                 file_path.unlink()  # Delete the uploaded file
-                raise HTTPException(
+                return JSONResponse(
                     status_code=409,
-                    detail={
-                        "code": "FILE_EXISTS",
-                        "message": f"File '{file.filename}' already exists in this location. Do you want to overwrite it?",
-                        "existing_document_id": existing_doc_by_name.id,
-                        "filename": file.filename,
-                        "folder_id": folder_id
+                    content={
+                        "detail": {
+                            "code": "FILE_EXISTS",
+                            "message": f"File '{file.filename}' already exists in this location. Do you want to overwrite it?",
+                            "existing_document_id": existing_doc_by_name.id,
+                            "filename": file.filename,
+                            "folder_id": folder_id
+                        }
                     }
                 )
 
