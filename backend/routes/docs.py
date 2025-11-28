@@ -263,12 +263,16 @@ async def download_document(
         file_ext = document.filename.split('.')[-1].lower()
         media_type = mime_types.get(file_ext, 'application/octet-stream')
 
+        # Encode filename for proper handling of special characters
+        from urllib.parse import quote
+        encoded_filename = quote(document.filename)
+
         return FileResponse(
             path=str(file_path),
             filename=document.filename,
             media_type=media_type,
             headers={
-                "Content-Disposition": f'attachment; filename="{document.filename}"'
+                "Content-Disposition": f'attachment; filename*=UTF-8\'\'{encoded_filename}'
             }
         )
 

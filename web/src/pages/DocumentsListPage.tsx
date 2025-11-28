@@ -163,7 +163,15 @@ export default function DocumentsListPage() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to download document')
+        // Try to get error details from response
+        let errorMessage = 'Failed to download document'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.detail || errorMessage
+        } catch {
+          errorMessage = `Failed to download document (${response.status})`
+        }
+        throw new Error(errorMessage)
       }
 
       const blob = await response.blob()
@@ -180,9 +188,9 @@ export default function DocumentsListPage() {
       // Clean up blob URL
       URL.revokeObjectURL(blobUrl)
       setToast({ message: 'Document downloaded successfully', type: 'success' })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to download document:', error)
-      setToast({ message: 'Failed to download document', type: 'error' })
+      setToast({ message: error.message || 'Failed to download document', type: 'error' })
     }
   }
 
