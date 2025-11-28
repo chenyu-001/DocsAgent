@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from pathlib import Path
 from typing import Optional
 import shutil
+import uuid
 
 from api.db import get_db
 from api.auth import get_current_active_user
@@ -55,11 +56,15 @@ async def upload_document(
 
             if not folder:
                 raise HTTPException(status_code=404, detail="Folder not found")
-        # 1. Save file
+        # 1. Save file with UUID-based filename to avoid encoding issues
         upload_dir = Path(settings.upload_path)
         upload_dir.mkdir(parents=True, exist_ok=True)
 
-        file_path = upload_dir / file.filename
+        # Generate unique filename: UUID + original extension
+        file_extension = Path(file.filename).suffix
+        unique_filename = f"{uuid.uuid4()}{file_extension}"
+        file_path = upload_dir / unique_filename
+
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
@@ -76,8 +81,8 @@ async def upload_document(
         if existing_doc_by_name:
             # If overwrite flag is not set, ask for confirmation
             if not overwrite:
-                # Don't delete the file yet - keep it for potential overwrite
-                # It will be automatically overwritten if user uploads again
+                # Clean up the newly uploaded file since we're asking for confirmation
+                file_path.unlink()
                 return JSONResponse(
                     status_code=409,
                     content={
