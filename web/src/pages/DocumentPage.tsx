@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { documentApi, folderApi, authApi } from '../api/client'
 import { Upload, ArrowLeft, FileText, CheckCircle, AlertCircle, Loader, Folder } from 'lucide-react'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 export default function DocumentPage() {
   const navigate = useNavigate()
@@ -279,38 +280,17 @@ export default function DocumentPage() {
             </div>
           )}
 
-          {/* Overwrite Confirmation Modal */}
-          {showOverwriteConfirm && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-                <div className="flex items-start space-x-3 mb-4">
-                  <AlertCircle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      File Already Exists
-                    </h3>
-                    <p className="text-gray-600 text-sm">
-                      {overwriteMessage}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex space-x-3 mt-6">
-                  <button
-                    onClick={handleCancelOverwrite}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleConfirmOverwrite}
-                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                  >
-                    Overwrite
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Overwrite Confirmation Dialog */}
+          <ConfirmDialog
+            isOpen={showOverwriteConfirm}
+            title="File Already Exists"
+            message={overwriteMessage}
+            confirmText="Overwrite"
+            cancelText="Cancel"
+            type="warning"
+            onConfirm={handleConfirmOverwrite}
+            onCancel={handleCancelOverwrite}
+          />
 
           {/* Instructions */}
           <div className="mt-8 pt-6 border-t border-gray-200">
