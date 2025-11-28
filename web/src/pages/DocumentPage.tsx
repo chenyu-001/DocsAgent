@@ -73,6 +73,8 @@ export default function DocumentPage() {
         message: `Upload successful! Document processed into ${response.chunks} chunks`,
       })
       setFile(null)
+      setUploading(false)
+      setProgress(0)
     } catch (error: any) {
       console.error('Upload failed:', error)
 
@@ -81,6 +83,8 @@ export default function DocumentPage() {
         // Show confirmation dialog
         setOverwriteMessage(error.response.data.detail.message)
         setShowOverwriteConfirm(true)
+        setUploading(false)
+        setProgress(0)
       } else {
         // Other errors
         const errorMessage = typeof error.response?.data?.detail === 'string'
@@ -91,10 +95,9 @@ export default function DocumentPage() {
           success: false,
           message: errorMessage,
         })
+        setUploading(false)
+        setProgress(0)
       }
-    } finally {
-      setUploading(false)
-      setProgress(0)
     }
   }
 
