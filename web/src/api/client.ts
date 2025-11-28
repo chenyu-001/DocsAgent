@@ -105,8 +105,9 @@ export const documentApi = {
     if (folderId !== undefined && folderId !== null) {
       formData.append('folder_id', folderId.toString())
     }
-    if (overwrite !== undefined) {
-      formData.append('overwrite', overwrite.toString())
+    // Only send overwrite when it's true
+    if (overwrite === true) {
+      formData.append('overwrite', 'true')
     }
 
     const response = await api.post<UploadResponse>('/api/upload', formData, {
