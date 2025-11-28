@@ -81,8 +81,8 @@ async def upload_document(
         if existing_doc_by_name:
             # If overwrite flag is not set, ask for confirmation
             if not overwrite:
-                # Clean up the newly uploaded file since we're asking for confirmation
-                file_path.unlink()
+                # Keep the file for potential overwrite
+                # Store the temp file path for cleanup if user cancels
                 return JSONResponse(
                     status_code=409,
                     content={
@@ -91,7 +91,8 @@ async def upload_document(
                             "message": f"File '{file.filename}' already exists in this location. Do you want to overwrite it?",
                             "existing_document_id": existing_doc_by_name.id,
                             "filename": file.filename,
-                            "folder_id": folder_id
+                            "folder_id": folder_id,
+                            "temp_file_path": str(file_path)
                         }
                     }
                 )
