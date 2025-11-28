@@ -76,7 +76,8 @@ async def upload_document(
         if existing_doc_by_name:
             # If overwrite flag is not set, ask for confirmation
             if not overwrite:
-                file_path.unlink()  # Delete the uploaded file
+                # Don't delete the file yet - keep it for potential overwrite
+                # It will be automatically overwritten if user uploads again
                 return JSONResponse(
                     status_code=409,
                     content={
