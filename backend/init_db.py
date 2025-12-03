@@ -70,8 +70,8 @@ def init_database(drop_existing: bool = False):
     logger.info("=" * 60)
 
     # 创建数据库引擎
-    logger.info(f"Connecting to database: {settings.DATABASE_URL}")
-    engine = create_engine(settings.DATABASE_URL)
+    logger.info(f"Connecting to database: {settings.database_url}")
+    engine = create_engine(settings.database_url)
 
     try:
         # 测试连接
@@ -150,7 +150,7 @@ def create_test_tenant():
     logger.info("Creating Test Tenant")
     logger.info("=" * 60)
 
-    engine = create_engine(settings.DATABASE_URL)
+    engine = create_engine(settings.database_url)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()
 
