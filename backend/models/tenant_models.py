@@ -3,7 +3,7 @@ Tenant Models - Multi-tenant architecture
 支持 Cloud / Hybrid / Local 三种部署模式
 """
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, BigInteger, Text, JSON
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, BigInteger, Text, JSON, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from api.db import Base
