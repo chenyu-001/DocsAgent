@@ -113,7 +113,7 @@ class TenantUser(Base):
     __tablename__ = "tenant_users"
 
     id = Column(UUID(as_uuid=True), primary_key=True, comment="关联ID")
-    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="租户ID")
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True, comment="租户ID")
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True, comment="用户ID")
 
     # 角色与部门
