@@ -3,7 +3,7 @@ Audit Models - 审计日志系统
 记录所有敏感操作,支持合规要求
 """
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, Text, JSON, Index
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, Text, JSON, Index, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from api.db import Base
 import enum
