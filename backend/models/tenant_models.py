@@ -144,7 +144,7 @@ class TenantFeature(Base):
     __tablename__ = "tenant_features"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="租户ID")
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True, comment="租户ID")
 
     # 功能标识
     feature_key = Column(String(50), nullable=False, comment="功能键(ocr/reranker/api_access)")
@@ -183,7 +183,7 @@ class Department(Base):
     __tablename__ = "departments"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, comment="部门ID")
-    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="租户ID")
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True, comment="租户ID")
 
     # 基本信息
     name = Column(String(255), nullable=False, comment="部门名称")

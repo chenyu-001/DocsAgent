@@ -89,7 +89,7 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, comment="日志ID")
-    tenant_id = Column(UUID(as_uuid=True), nullable=True, index=True, comment="租户ID(平台操作为NULL)")
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="SET NULL"), nullable=True, index=True, comment="租户ID(平台操作为NULL)")
 
     # 操作信息
     action = Column(Enum(AuditAction), nullable=False, index=True, comment="操作类型")
@@ -165,7 +165,7 @@ class LoginHistory(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, comment="记录ID")
     user_id = Column(Integer, nullable=False, index=True, comment="用户ID")
-    tenant_id = Column(UUID(as_uuid=True), nullable=True, index=True, comment="租户ID")
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="SET NULL"), nullable=True, index=True, comment="租户ID")
 
     # 登录信息
     username = Column(String(50), nullable=False, comment="用户名")

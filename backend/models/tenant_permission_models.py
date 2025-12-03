@@ -62,7 +62,7 @@ class TenantRole(Base):
     __tablename__ = "tenant_roles"
 
     id = Column(UUID(as_uuid=True), primary_key=True, comment="角色ID")
-    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="租户ID")
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True, comment="租户ID")
 
     # 角色信息
     name = Column(String(50), nullable=False, comment="角色名称")
@@ -181,7 +181,7 @@ class ResourcePermission(Base):
     __tablename__ = "resource_permissions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, comment="权限ID")
-    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True, comment="租户ID")
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True, comment="租户ID")
 
     # 资源标识
     resource_type = Column(Enum(ResourceType), nullable=False, comment="资源类型")
