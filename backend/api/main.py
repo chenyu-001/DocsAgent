@@ -114,13 +114,14 @@ async def get_current_user_info(current_user: User = Depends(get_current_active_
 
 
 # ==================== Import Other Routes ====================
-from routes import upload, search, docs, folders, qa
+from routes import upload, search, docs, folders, qa, tenants
 
 app.include_router(upload.router, prefix="/api", tags=["Document Upload"])
 app.include_router(search.router, prefix="/api", tags=["Document Search"])
 app.include_router(docs.router, prefix="/api", tags=["Document Management"])
 app.include_router(folders.router, prefix="/api", tags=["Folder Management"])
 app.include_router(qa.router, prefix="/api", tags=["Question Answering"])
+app.include_router(tenants.router, tags=["Tenant Management"])
 
 # TODO: Add more routes later
 # from routes import acl, metrics
