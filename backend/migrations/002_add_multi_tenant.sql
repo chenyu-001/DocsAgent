@@ -212,10 +212,15 @@ COMMENT ON TABLE resource_permissions IS '资源权限表';
 COMMENT ON COLUMN resource_permissions.permission IS '权限位(位运算)';
 
 
+-- 平台角色枚举类型
+CREATE TYPE platformrole AS ENUM ('super_admin', 'ops', 'support', 'auditor');
+
+COMMENT ON TYPE platformrole IS '平台管理员角色类型';
+
 -- 平台管理员表
 CREATE TABLE IF NOT EXISTS platform_admins (
     user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    role VARCHAR(20) NOT NULL DEFAULT 'support' CHECK (role IN ('super_admin', 'ops', 'support', 'auditor')),
+    role platformrole NOT NULL DEFAULT 'support',
 
     scope TEXT,
 
@@ -227,6 +232,7 @@ CREATE TABLE IF NOT EXISTS platform_admins (
 CREATE INDEX idx_platform_admins_role ON platform_admins(role);
 
 COMMENT ON TABLE platform_admins IS '平台管理员表';
+COMMENT ON COLUMN platform_admins.role IS '平台角色: super_admin(超级管理员), ops(运维), support(支持), auditor(审计)';
 
 
 -- ==========================================================
