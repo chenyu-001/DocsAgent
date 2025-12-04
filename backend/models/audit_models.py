@@ -17,8 +17,10 @@ class AuditAction(str, enum.Enum):
     USER_REGISTER = "user.register"
     USER_UPDATE = "user.update"
     USER_DELETE = "user.delete"
+    USER_DISABLE = "user.disable"
+    USER_REMOVE = "user.remove"
     USER_PASSWORD_CHANGE = "user.password_change"
-    USER_PASSWORD_RESET = "user.password_reset"
+    PASSWORD_RESET = "password.reset"
 
     # ========== 租户操作 ==========
     TENANT_CREATE = "tenant.create"
@@ -79,7 +81,8 @@ class AuditAction(str, enum.Enum):
 class AuditLevel(str, enum.Enum):
     """审计级别"""
     INFO = "info"        # 普通信息
-    WARNING = "warning"  # 警告(异常行为)
+    WARN = "warning"  # 警告(异常行为)
+    WARNING = "warning"  # 警告(别名)
     CRITICAL = "critical"  # 关键操作
     SECURITY = "security"  # 安全事件
 
