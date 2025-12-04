@@ -1,49 +1,58 @@
-# 📚 DocsAgent - 文档理解小机器人
+# 📚 DocsAgent - 智能文档理解系统
 
-一个基于 RAG（检索增强生成）的智能文档理解系统，能够理解并回答关于上传文档的问题。
+一个基于 RAG（检索增强生成）的智能文档理解系统，支持多格式文档上传、语义检索和 AI 问答。
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## ✨ 核心功能
 
 - 📄 **多格式支持**：PDF、Word、PowerPoint、Excel、TXT、Markdown
 - 🔍 **智能检索**：基于向量相似度的语义检索
-- 🤖 **AI 问答**：使用 Qwen 等 LLM 理解文档内容并回答问题
-- 🔐 **权限管理**：用户认证和文档访问控制
-- 📊 **日志追踪**：完整的操作和查询日志
+- 🤖 **AI 问答**：使用 LLM 理解文档内容并智能回答
+- 👥 **多租户架构**：支持企业级多租户隔离
+- 🔐 **权限管理**：完整的用户认证和细粒度权限控制
+- 📊 **审计日志**：完整的操作追踪和审计
 
 ## 🛠️ 技术栈
 
 **后端**:
 - FastAPI - 高性能 Web 框架
-- PostgreSQL - 元数据存储
+- PostgreSQL - 关系数据库
 - Qdrant - 向量数据库
 - BGE - 中文嵌入模型 (BAAI/bge-large-zh-v1.5)
-- Qwen - 大语言模型（通义千问）
-
-**文档解析**:
-- PyMuPDF - PDF 解析
-- python-docx - Word 文档
-- python-pptx - PowerPoint
-- openpyxl - Excel
+- Qwen/OpenAI/Claude - 大语言模型
 
 **前端**:
-- React 18 - UI 框架
-- TypeScript - 类型安全
-- Vite - 构建工具
-- Tailwind CSS - 样式框架
+- React 18 + TypeScript
+- Vite + Tailwind CSS
+- React Router + Axios
 
 ## 🚀 快速开始
 
-### 1. 前置要求
+### 前置要求
 
-- Docker & Docker Compose
-- (可选) 阿里云 API Key 用于 Qwen 模型
+- Docker 20.10+
+- Docker Compose 2.0+
+
+### 1. 克隆项目
+
+```bash
+git clone https://github.com/chenyu-001/DocsAgent.git
+cd DocsAgent
+```
 
 ### 2. 配置环境变量
 
-编辑 `.env` 文件，配置你的 API Key：
+复制环境变量模板并配置：
 
 ```bash
-# 通义千问 API Key（必须）
+cp .env.example .env
+```
+
+编辑 `.env` 文件，至少配置以下必要参数：
+
+```bash
+# 通义千问 API Key（必须配置才能使用问答功能）
 LLM_API_KEY=sk-your-qwen-api-key-here
 
 # 数据库密码（建议修改）
@@ -53,17 +62,16 @@ POSTGRES_PASSWORD=your-strong-password
 JWT_SECRET_KEY=$(openssl rand -hex 32)
 ```
 
+> 💡 **获取 Qwen API Key**：访问 [阿里云-模型服务灵积](https://dashscope.console.aliyun.com/)，开通"通义千问"服务后创建 API Key
+
 ### 3. 启动服务
 
 ```bash
-# 启动所有服务（PostgreSQL + Qdrant + Backend）
+# 启动所有服务
 docker-compose up -d
 
 # 查看日志
 docker-compose logs -f backend
-
-# 停止服务
-docker-compose down
 ```
 
 ### 4. 访问应用
@@ -71,78 +79,42 @@ docker-compose down
 - **前端界面**: http://localhost:3000
 - **API 文档**: http://localhost:8000/docs
 - **健康检查**: http://localhost:8000/health
-- **Qdrant 管理界面**: http://localhost:6333/dashboard
 
-## 📖 使用示例
+## 📖 使用指南
 
-### 方式一：使用前端界面（推荐）
+### Web 界面使用
 
 1. 访问 http://localhost:3000
-2. 点击"注册"创建账号
+2. 点击"注册"创建账号（或使用默认账号：`admin` / `admin123`）
 3. 登录后进入主界面
-4. 点击"上传文档"上传 PDF/Word/PPT 等文件
+4. 上传文档（支持拖拽）
 5. 等待文档处理完成
-6. 在搜索框输入问题，查看相关内容
+6. 在搜索框输入问题，查看智能回答
 
-### 方式二：使用 API（开发调试）
+### API 使用
 
-#### 1. 用户注册
+详细的 API 文档请访问：http://localhost:8000/docs
+
+#### 快速示例
 
 ```bash
-curl -X POST "http://localhost:8000/api/auth/register" \
+# 1. 用户登录
+TOKEN=$(curl -X POST "http://localhost:8000/api/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{
-    "username": "testuser",
-    "email": "test@example.com",
-    "password": "password123",
-    "full_name": "测试用户"
-  }'
-```
+  -d '{"username": "admin", "password": "admin123"}' \
+  | jq -r '.access_token')
 
-#### 2. 用户登录
-
-```bash
-curl -X POST "http://localhost:8000/api/auth/login" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "testuser",
-    "password": "password123"
-  }'
-
-# 返回示例：
-# {"access_token":"eyJ...", "token_type":"bearer"}
-```
-
-#### 3. 上传文档
-
-```bash
-TOKEN="your-access-token-here"
-
+# 2. 上传文档
 curl -X POST "http://localhost:8000/api/upload" \
   -H "Authorization: Bearer $TOKEN" \
-  -F "file=@/path/to/your/document.pdf"
-```
+  -F "file=@document.pdf"
 
-#### 4. 检索文档
-
-```bash
-curl -X POST "http://localhost:8000/api/search" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "这个文档的主要内容是什么？",
-    "top_k": 5
-  }'
-```
-
-#### 5. 智能问答（需要配置 LLM API Key）
-
-```bash
+# 3. 智能问答
 curl -X POST "http://localhost:8000/api/qa" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "question": "文档中关于部署的步骤有哪些？",
+    "question": "这个文档的主要内容是什么？",
     "top_k": 5
   }'
 ```
@@ -155,82 +127,32 @@ DocsAgent/
 │   ├── api/                    # API 层
 │   │   ├── main.py            # FastAPI 应用入口
 │   │   ├── config.py          # 配置管理
-│   │   ├── auth.py            # 认证系统
-│   │   └── db.py              # 数据库连接
+│   │   └── auth.py            # 认证系统
 │   ├── models/                 # 数据模型
-│   │   ├── user_models.py     # 用户模型
-│   │   ├── document_models.py # 文档模型
-│   │   └── chunk_models.py    # 文本块模型
 │   ├── services/               # 业务逻辑
-│   │   ├── parser/            # 文档解析器
+│   │   ├── parser/            # 文档解析
 │   │   ├── embedder/          # 向量嵌入
-│   │   ├── chunker.py         # 文本切片
 │   │   └── retriever.py       # 检索服务
 │   ├── routes/                 # API 路由
-│   │   ├── upload.py          # 文档上传
-│   │   └── search.py          # 文档检索
-│   └── utils/                  # 工具函数
-├── web/                        # 前端界面
+│   └── migrations/             # 数据库迁移
+├── web/                        # 前端应用
 │   ├── src/
 │   │   ├── api/               # API 客户端
 │   │   ├── components/        # React 组件
-│   │   ├── pages/             # 页面
-│   │   ├── App.tsx            # 主应用
-│   │   └── main.tsx           # 入口文件
-│   ├── package.json
-│   └── vite.config.ts
+│   │   └── pages/             # 页面
 ├── docker-compose.yml          # Docker 编排
-├── .env                        # 环境变量
-└── README.md                   # 项目文档
-```
-
-## 🔧 开发模式
-
-### 本地开发（不使用 Docker）
-
-```bash
-cd backend
-
-# 创建虚拟环境
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# 安装依赖
-pip install -r requirements.txt
-
-# 启动开发服务器
-uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-**注意**: 本地开发仍需要 PostgreSQL 和 Qdrant 服务，可使用 Docker 单独启动：
-
-```bash
-docker-compose up -d postgres qdrant
+├── .env.example               # 环境变量模板
+└── README.md                  # 项目文档
 ```
 
 ## ⚙️ 配置说明
 
-### 嵌入模型
+### LLM 模型配置
 
-默认使用 **BGE-large-zh-v1.5** 中文嵌入模型，首次启动会自动下载（约 1.3GB）。
-
-如需切换模型，修改 `.env`:
+支持多种大语言模型：
 
 ```bash
-# 使用其他 BGE 模型
-EMBEDDING_MODEL_NAME=BAAI/bge-base-zh-v1.5
-
-# 或使用 OpenAI embeddings
-EMBEDDING_MODEL_TYPE=openai
-OPENAI_API_KEY=sk-your-openai-key
-```
-
-### LLM 模型
-
-支持多种 LLM：
-
-```bash
-# Qwen（默认）
+# 通义千问（默认）
 LLM_TYPE=qwen
 LLM_API_KEY=sk-your-qwen-key
 LLM_MODEL_NAME=qwen-plus
@@ -246,68 +168,107 @@ LLM_API_KEY=sk-ant-your-claude-key
 LLM_MODEL_NAME=claude-3-5-sonnet-20241022
 ```
 
+### 嵌入模型配置
+
+默认使用 BGE-large-zh-v1.5 中文嵌入模型（首次启动会自动下载，约 1.3GB）：
+
+```bash
+# 使用其他 BGE 模型
+EMBEDDING_MODEL_NAME=BAAI/bge-base-zh-v1.5  # 更小的模型
+
+# 使用 CUDA 加速（需要 GPU）
+EMBEDDING_DEVICE=cuda
+```
+
+## 🔧 常用命令
+
+```bash
+# 启动服务
+docker-compose up -d
+
+# 停止服务
+docker-compose down
+
+# 查看日志
+docker-compose logs -f backend
+
+# 重启服务
+docker-compose restart backend
+
+# 进入容器
+docker-compose exec backend bash
+
+# 数据库管理
+docker-compose exec postgres psql -U docsagent -d docsagent
+
+# 重建容器（更新代码后）
+docker-compose up -d --build backend
+```
+
 ## 🐛 常见问题
 
-### 1. 智能问答功能报错
+### 智能问答功能报错
 
-如果使用智能问答功能时看到"生成回答时出现问题，请稍后重试"，通常是因为：
+**问题**：提示"生成回答时出现问题，请稍后重试"
 
-- **LLM API Key 未配置或无效**：请确保 `.env` 文件中的 `LLM_API_KEY` 已配置为有效的 API Key
-- **API 额度不足**：检查通义千问账户是否有足够的调用额度
-- **网络连接问题**：确认服务器能够访问 `https://dashscope.aliyuncs.com`
+**原因**：
+- LLM API Key 未配置或无效
+- API 额度不足
+- 网络连接问题
 
-检索功能（搜索文档）不需要 LLM API，即使没有配置 API Key 也能正常使用。
+**解决**：
+1. 检查 `.env` 文件中的 `LLM_API_KEY` 是否正确配置
+2. 确认 API 账户有足够的调用额度
+3. 测试网络连接：`curl https://dashscope.aliyuncs.com`
 
-### 2. 模型下载慢
+> 💡 **提示**：检索功能不需要 LLM API，即使没有配置 API Key 也能正常使用文档搜索。
 
-BGE 模型会从 Hugging Face 下载。国内用户可设置镜像：
+### 模型下载慢
+
+**问题**：BGE 模型下载速度慢
+
+**解决**：设置 Hugging Face 镜像
 
 ```bash
 export HF_ENDPOINT=https://hf-mirror.com
 ```
 
-### 3. 内存不足
+### 内存不足
 
-BGE-large 模型需要约 2GB 内存。如果内存有限，可使用更小的模型：
+**问题**：容器 OOM 错误
+
+**解决**：使用更小的嵌入模型
 
 ```bash
 EMBEDDING_MODEL_NAME=BAAI/bge-small-zh-v1.5  # 约 100MB
 ```
 
-### 4. GPU 加速
+## 🗺️ 路线图
 
-如果有 GPU，可启用 CUDA 加速：
-
-```bash
-EMBEDDING_DEVICE=cuda
-```
-
-## 📝 TODO
-
-- [x] 实现 QA（问答）接口
-- [x] 添加文档列表和管理功能
-- [x] 添加文件夹组织功能
-- [ ] 支持更多文件格式（图片 OCR）
-- [ ] 实现重排序（Reranker）
-- [ ] 完善权限控制（ACL）
-- [ ] 添加搜索历史记录
-- [ ] 实现暗色模式
+- [x] 基础文档上传和检索
+- [x] 智能问答功能
+- [x] 多租户架构
+- [x] 细粒度权限控制
+- [ ] 图片 OCR 支持
+- [ ] 检索重排序（Reranker）
+- [ ] 暗色模式
+- [ ] 搜索历史记录
+- [ ] 知识图谱可视化
 
 ## 📄 许可证
 
-MIT License
+本项目采用 [MIT License](LICENSE) 开源协议。
 
-## 🙋 获取 Qwen API Key
-
-1. 访问 [阿里云-模型服务灵积](https://dashscope.console.aliyun.com/)
-2. 开通"通义千问"服务
-3. 创建 API Key
-4. 将 API Key 填入 `.env` 文件的 `LLM_API_KEY`
-
-## 💡 贡献
+## 🤝 贡献
 
 欢迎提交 Issue 和 Pull Request！
 
+## 📞 支持
+
+- 📧 Email: [your-email@example.com]
+- 🐛 Issues: [GitHub Issues](https://github.com/chenyu-001/DocsAgent/issues)
+- 📖 文档: [Wiki](https://github.com/chenyu-001/DocsAgent/wiki)
+
 ---
 
-**注意**: 这是一个初始版本，部分功能还在完善中。如有问题请提 Issue。
+**⭐ 如果这个项目对你有帮助，欢迎给个 Star！**
