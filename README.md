@@ -265,7 +265,7 @@ EMBEDDING_MODEL_NAME=BAAI/bge-small-zh-v1.5  # 约 100MB
 
 ## 📞 支持
 
-- 📧 Email: [your-email@example.com]
+- 📧 Email: [chenyuhh001@gmail.com]
 - 🐛 Issues: [GitHub Issues](https://github.com/chenyu-001/DocsAgent/issues)
 - 📖 文档: [Wiki](https://github.com/chenyu-001/DocsAgent/wiki)
 
