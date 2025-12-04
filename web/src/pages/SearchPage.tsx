@@ -23,15 +23,8 @@ export default function SearchPage() {
 
   const loadUserInfo = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/auth/me', {
-        headers: {
-          'Authorization': `Bearer ${authApi.getToken()}`
-        }
-      })
-      if (response.ok) {
-        const user: User = await response.json()
-        setCurrentUser(user)
-      }
+      const user = await authApi.getCurrentUser()
+      setCurrentUser(user)
     } catch (error) {
       console.error('Failed to load user info:', error)
     }
