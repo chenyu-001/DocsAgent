@@ -5,6 +5,7 @@ import SearchPage from './pages/SearchPage'
 import DocumentPage from './pages/DocumentPage'
 import DocumentsListPage from './pages/DocumentsListPage'
 import DocumentDetailPage from './pages/DocumentDetailPage'
+import AdminPage from './pages/AdminPage'
 
 // Protected route - requires authentication
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -72,6 +73,16 @@ function App() {
           element={
             <ProtectedRoute>
               <DocumentDetailPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin page */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminPage />
             </ProtectedRoute>
           }
         />
