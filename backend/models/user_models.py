@@ -44,9 +44,9 @@ class User(Base):
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}', role='{self.role}')>"
 
-    def to_dict(self):
+    def to_dict(self, db=None):
         """Convert to dictionary"""
-        return {
+        result = {
             "id": self.id,
             "username": self.username,
             "email": self.email,
@@ -56,3 +56,18 @@ class User(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "last_login": self.last_login.isoformat() if self.last_login else None,
         }
+
+        # Add platform admin role if available
+        if db:
+            from models.tenant_permission_models import PlatformAdmin
+            platform_admin = db.query(PlatformAdmin).filter(
+                PlatformAdmin.user_id == self.id
+            ).first()
+            if platform_admin:
+                result["platform_role"] = platform_admin.role.value
+                result["is_platform_admin"] = True
+            else:
+                result["platform_role"] = None
+                result["is_platform_admin"] = False
+
+        return result
