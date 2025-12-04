@@ -261,8 +261,8 @@ def fix_migration_conflicts():
                         'Default Tenant',
                         'default',
                         'Default tenant for legacy data',
-                        'cloud',
-                        'active'
+                        'CLOUD',
+                        'ACTIVE'
                     ) ON CONFLICT (id) DO NOTHING
                 """))
                 logger.info("   ✓ 默认租户已创建")
