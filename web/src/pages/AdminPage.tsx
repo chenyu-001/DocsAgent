@@ -4,10 +4,12 @@ import { authApi } from '../api/client'
 import type { User, Tenant } from '../api/types'
 import UserManagement from '../components/admin/UserManagement'
 import RoleManagement from '../components/admin/RoleManagement'
+import DepartmentManagement from '../components/admin/DepartmentManagement'
+import AuditLogViewer from '../components/admin/AuditLogViewer'
 
 const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000001'
 
-type TabType = 'users' | 'roles' | 'tenant'
+type TabType = 'tenant' | 'users' | 'roles' | 'departments' | 'audit'
 
 export default function AdminPage() {
   const navigate = useNavigate()
@@ -99,6 +101,8 @@ export default function AdminPage() {
     { key: 'tenant', label: '租户概览', icon: '📊' },
     { key: 'users', label: '用户管理', icon: '👥' },
     { key: 'roles', label: '角色权限', icon: '🔐' },
+    { key: 'departments', label: '部门管理', icon: '🏢' },
+    { key: 'audit', label: '审计日志', icon: '📝' },
   ]
 
   return (
@@ -244,6 +248,16 @@ export default function AdminPage() {
             {/* Role Management Tab */}
             {activeTab === 'roles' && (
               <RoleManagement onError={handleError} />
+            )}
+
+            {/* Department Management Tab */}
+            {activeTab === 'departments' && (
+              <DepartmentManagement onError={handleError} />
+            )}
+
+            {/* Audit Log Tab */}
+            {activeTab === 'audit' && (
+              <AuditLogViewer onError={handleError} />
             )}
           </div>
         </div>
