@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import SearchBar from '../components/SearchBar'
 import ResultCard from '../components/ResultCard'
 import { MarkdownRenderer } from '../components/MarkdownRenderer'
 import { qaApi, authApi, searchApi } from '../api/client'
-import type { SearchResult } from '../api/types'
-import { Upload, LogOut, FileText, FolderOpen } from 'lucide-react'
+import type { SearchResult, User } from '../api/types'
+import { Upload, LogOut, FileText, FolderOpen, Settings } from 'lucide-react'
 
 export default function SearchPage() {
   const navigate = useNavigate()
@@ -14,6 +14,28 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
   const [answer, setAnswer] = useState('')
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
+
+  // Load current user info on mount
+  useEffect(() => {
+    loadUserInfo()
+  }, [])
+
+  const loadUserInfo = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${authApi.getToken()}`
+        }
+      })
+      if (response.ok) {
+        const user: User = await response.json()
+        setCurrentUser(user)
+      }
+    } catch (error) {
+      console.error('Failed to load user info:', error)
+    }
+  }
 
   const handleSearch = async (searchQuery: string) => {
     setLoading(true)
@@ -111,6 +133,16 @@ export default function SearchPage() {
                 <Upload className="w-4 h-4" />
                 <span>Upload</span>
               </button>
+              {/* Show Admin button only for platform admins */}
+              {currentUser?.is_platform_admin && (
+                <button
+                  onClick={() => navigate('/admin')}
+                  className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  <Settings className="w-4 h-4" />
+                  <span>Admin</span>
+                </button>
+              )}
               <button
                 onClick={handleLogout}
                 className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"

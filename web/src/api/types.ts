@@ -1,8 +1,8 @@
 /**
- * API {��I
+ * API 类型定义
  */
 
-// ==================== (7�s ====================
+// ==================== 用户 ====================
 export interface User {
   id: number
   username: string
@@ -12,6 +12,9 @@ export interface User {
   is_active: boolean
   created_at: string
   last_login: string | null
+  // Platform admin fields
+  platform_role?: 'super_admin' | 'ops' | 'support' | 'auditor' | null
+  is_platform_admin?: boolean
 }
 
 export interface LoginRequest {
@@ -31,7 +34,7 @@ export interface AuthResponse {
   token_type: string
 }
 
-// ==================== �c�s ====================
+// ==================== 文档 ====================
 export interface Document {
   id: number
   filename: string
@@ -61,7 +64,7 @@ export interface UploadResponse {
   chunks: number
 }
 
-// ==================== "�s ====================
+// ==================== 搜索 ====================
 export interface SearchRequest {
   query: string
   top_k?: number
@@ -80,7 +83,7 @@ export interface SearchResponse {
   count: number
 }
 
-// ==================== �T�s ====================
+// ==================== 问答 ====================
 export interface QARequest {
   question: string
   top_k?: number
@@ -95,7 +98,50 @@ export interface QAResponse {
   total_time: number
 }
 
-// ==================== (͔ ====================
+// ==================== 租户管理 ====================
+export interface Tenant {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  deploy_mode: 'CLOUD' | 'HYBRID' | 'LOCAL'
+  status: 'ACTIVE' | 'SUSPENDED' | 'ARCHIVED' | 'TRIAL'
+  storage_quota_bytes: number
+  storage_used_bytes: number
+  storage_usage_percent: number
+  user_quota: number
+  user_count: number
+  document_quota: number
+  document_count: number
+  created_at: string
+}
+
+export interface TenantRole {
+  id: string
+  tenant_id: string
+  name: string
+  display_name: string
+  description: string | null
+  level: number
+  permissions: number
+  permissions_string: string
+  is_system: boolean
+  is_default: boolean
+}
+
+export interface TenantUser {
+  id: string
+  tenant_id: string
+  user_id: number
+  role_id: string | null
+  role_name: string | null
+  department_id: string | null
+  department_name: string | null
+  status: string
+  joined_at: string
+}
+
+// ==================== 错误 ====================
 export interface ApiError {
   error: string
   detail?: string
