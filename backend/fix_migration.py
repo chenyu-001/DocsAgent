@@ -255,14 +255,27 @@ def fix_migration_conflicts():
                 logger.info("\n步骤 4: 创建默认租户...")
 
                 conn.execute(text("""
-                    INSERT INTO tenants (id, name, slug, description, deploy_mode, status)
+                    INSERT INTO tenants (
+                        id, name, slug, description, deploy_mode, status,
+                        storage_quota_bytes, user_quota, document_quota,
+                        storage_used_bytes, user_count, document_count,
+                        created_at, updated_at
+                    )
                     VALUES (
                         '00000000-0000-0000-0000-000000000001',
                         'Default Tenant',
                         'default',
                         'Default tenant for legacy data',
                         'CLOUD',
-                        'ACTIVE'
+                        'ACTIVE',
+                        10737418240,
+                        100,
+                        10000,
+                        0,
+                        0,
+                        0,
+                        NOW(),
+                        NOW()
                     ) ON CONFLICT (id) DO NOTHING
                 """))
                 logger.info("   ✓ 默认租户已创建")
