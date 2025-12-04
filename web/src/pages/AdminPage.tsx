@@ -23,14 +23,7 @@ export default function AdminPage() {
       setError(null)
 
       // Get current user
-      const userRes = await fetch('http://localhost:8000/api/auth/me', {
-        headers: {
-          'Authorization': `Bearer ${authApi.getToken()}`
-        }
-      })
-
-      if (!userRes.ok) throw new Error('Failed to load user info')
-      const userData: User = await userRes.json()
+      const userData = await authApi.getCurrentUser()
       setUser(userData)
 
       // Check if user is platform admin
@@ -39,10 +32,12 @@ export default function AdminPage() {
         return
       }
 
+      const token = localStorage.getItem('access_token')
+
       // Get tenant info
       const tenantRes = await fetch(`http://localhost:8000/api/tenants/current/info`, {
         headers: {
-          'Authorization': `Bearer ${authApi.getToken()}`,
+          'Authorization': `Bearer ${token}`,
           'X-Tenant-ID': DEFAULT_TENANT_ID
         }
       })
@@ -55,7 +50,7 @@ export default function AdminPage() {
       // Get tenant users
       const usersRes = await fetch(`http://localhost:8000/api/tenants/current/users`, {
         headers: {
-          'Authorization': `Bearer ${authApi.getToken()}`,
+          'Authorization': `Bearer ${token}`,
           'X-Tenant-ID': DEFAULT_TENANT_ID
         }
       })
