@@ -9,14 +9,12 @@ Fix Admin Permissions Script
 3. 检查并修复运维账号的权限
 
 使用方法:
-python fix_admin_permissions.py --username admin
+docker-compose exec backend python /app/fix_admin_permissions.py --fix
 """
 import sys
 from pathlib import Path
 
-# 添加backend目录到Python路径
-sys.path.insert(0, str(Path(__file__).parent / "backend"))
-
+# 当前已经在backend目录下，不需要额外添加路径
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from api.config import settings
@@ -27,7 +25,7 @@ from models.tenant_permission_models import (
 )
 import logging
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 
 DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000001"
@@ -55,7 +53,7 @@ def fix_admin_permissions(username: str = "admin"):
             logger.error(f"❌ 用户 {username} 不存在")
             return
 
-        logger.info(f"✓ 找到用户: {user.username} (ID: {user.id})")
+        logger.info(f"\n✓ 找到用户: {user.username} (ID: {user.id})")
 
         # 2. 检查并创建 PlatformAdmin
         platform_admin = db.query(PlatformAdmin).filter(
@@ -137,10 +135,10 @@ def fix_admin_permissions(username: str = "admin"):
         logger.info("✅ 权限修复完成!")
         logger.info("=" * 60)
         logger.info(f"\n📋 用户 {username} 现在拥有:")
-        logger.info(f"   1️⃣ 平台管理员权限 (SUPER_ADMIN)")
+        logger.info(f"   1️⃣  平台管理员权限 (SUPER_ADMIN)")
         logger.info(f"      - 可以管理所有租户")
         logger.info(f"      - 可以跨租户访问数据")
-        logger.info(f"   2️⃣ 租户管理员权限 (tenant_admin)")
+        logger.info(f"   2️⃣  租户管理员权限 (tenant_admin)")
         logger.info(f"      - 可以管理租户内的用户和权限")
         logger.info(f"      - 可以使用所有业务功能（上传文档、问答等）")
         logger.info(f"\n🔐 登录信息:")
@@ -149,7 +147,9 @@ def fix_admin_permissions(username: str = "admin"):
         logger.info(f"   租户ID: {DEFAULT_TENANT_ID}")
 
     except Exception as e:
-        logger.error(f"❌ 修复失败: {e}", exc_info=True)
+        logger.error(f"\n❌ 修复失败: {e}")
+        import traceback
+        traceback.print_exc()
         db.rollback()
     finally:
         db.close()
@@ -217,7 +217,9 @@ def check_user_permissions(username: str):
         logger.info("\n" + "=" * 60)
 
     except Exception as e:
-        logger.error(f"❌ 检查失败: {e}", exc_info=True)
+        logger.error(f"❌ 检查失败: {e}")
+        import traceback
+        traceback.print_exc()
     finally:
         db.close()
         engine.dispose()
@@ -243,6 +245,7 @@ def create_ops_user(username: str, email: str, password: str = "ops123", full_na
 
     try:
         from passlib.context import CryptContext
+        from models.user_models import UserRole
         pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
         # 检查用户是否已存在
@@ -257,7 +260,7 @@ def create_ops_user(username: str, email: str, password: str = "ops123", full_na
                 email=email,
                 hashed_password=pwd_context.hash(password),
                 full_name=full_name,
-                role="user",  # 老的角色字段设为 user
+                role=UserRole.USER,  # 老的角色字段设为 user
                 is_active=True
             )
             db.add(user)
@@ -334,7 +337,9 @@ def create_ops_user(username: str, email: str, password: str = "ops123", full_na
         logger.info(f"   - 可以使用业务功能（上传文档、问答等）")
 
     except Exception as e:
-        logger.error(f"❌ 创建失败: {e}", exc_info=True)
+        logger.error(f"❌ 创建失败: {e}")
+        import traceback
+        traceback.print_exc()
         db.rollback()
     finally:
         db.close()
@@ -397,13 +402,10 @@ if __name__ == "__main__":
         parser.print_help()
         print("\n示例:")
         print("  # 修复admin用户权限")
-        print("  python fix_admin_permissions.py --fix")
+        print("  docker-compose exec backend python /app/fix_admin_permissions.py --fix")
         print()
         print("  # 检查admin用户权限")
-        print("  python fix_admin_permissions.py --check --username admin")
+        print("  docker-compose exec backend python /app/fix_admin_permissions.py --check --username admin")
         print()
         print("  # 创建运维账号")
-        print("  python fix_admin_permissions.py --create-ops")
-        print()
-        print("  # 创建自定义运维账号")
-        print("  python fix_admin_permissions.py --create-ops --ops-username ops2 --ops-password mypass123")
+        print("  docker-compose exec backend python /app/fix_admin_permissions.py --create-ops")
