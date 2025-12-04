@@ -96,6 +96,34 @@ class GrantPermissionRequest(BaseModel):
     expires_at: Optional[str] = None
 
 
+class UpdateUserRequest(BaseModel):
+    """更新用户请求"""
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+
+
+class UpdateUserStatusRequest(BaseModel):
+    """更新用户状态请求"""
+    status: str = Field(..., pattern="^(active|disabled)$")
+
+
+class UpdateUserRoleRequest(BaseModel):
+    """更新用户角色请求"""
+    role_name: str
+
+
+class ResetPasswordRequest(BaseModel):
+    """重置密码请求"""
+    new_password: str = Field(..., min_length=6)
+
+
+class RoleUpdate(BaseModel):
+    """更新角色请求"""
+    display_name: Optional[str] = None
+    description: Optional[str] = None
+    permissions: Optional[int] = None
+
+
 # ========== Helper Functions ==========
 
 def require_platform_admin(current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
@@ -394,16 +422,28 @@ async def list_tenant_users(
     db: Session = Depends(get_db)
 ):
     """
-    列出租户的所有用户
+    列出租户的所有用户（包含用户详细信息）
     """
     tenant = get_current_tenant(request)
 
     tenant_users = db.query(TenantUser).filter(
-        TenantUser.tenant_id == tenant.id,
-        TenantUser.status == "active"
+        TenantUser.tenant_id == tenant.id
     ).offset(skip).limit(limit).all()
 
-    return {"users": [tu.to_dict() for tu in tenant_users]}
+    # Enrich with user details
+    users_with_details = []
+    for tu in tenant_users:
+        user_dict = tu.to_dict()
+        # Get user details
+        user = db.query(User).filter(User.id == tu.user_id).first()
+        if user:
+            user_dict['username'] = user.username
+            user_dict['email'] = user.email
+            user_dict['full_name'] = user.full_name
+            user_dict['is_active'] = user.is_active
+        users_with_details.append(user_dict)
+
+    return {"users": users_with_details}
 
 
 @router.post("/current/roles", dependencies=[Depends(require_tenant_admin)])
@@ -543,3 +583,418 @@ async def list_resource_permissions(
     )
 
     return {"permissions": [p.to_dict() for p in permissions]}
+
+
+# ========== User Management Routes ==========
+
+@router.patch("/current/users/{tenant_user_id}", dependencies=[Depends(require_tenant_admin)])
+async def update_user(
+    request: Request,
+    tenant_user_id: str,
+    user_data: UpdateUserRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    更新租户用户信息 (租户管理员)
+    """
+    tenant = get_current_tenant(request)
+
+    # 查找租户用户
+    tenant_user = db.query(TenantUser).filter(
+        TenantUser.id == tenant_user_id,
+        TenantUser.tenant_id == tenant.id
+    ).first()
+
+    if not tenant_user:
+        raise HTTPException(status_code=404, detail="Tenant user not found")
+
+    # 获取实际用户对象
+    user = db.query(User).filter(User.id == tenant_user.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # 保存变更前的数据
+    old_data = {"full_name": user.full_name, "email": user.email}
+
+    # 更新用户信息
+    if user_data.full_name is not None:
+        user.full_name = user_data.full_name
+    if user_data.email is not None:
+        # 检查邮箱是否已被使用
+        existing_email = db.query(User).filter(
+            User.email == user_data.email,
+            User.id != user.id
+        ).first()
+        if existing_email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already in use"
+            )
+        user.email = user_data.email
+
+    db.commit()
+
+    # 审计日志
+    audit = AuditService(db)
+    audit.log(
+        action=AuditAction.USER_UPDATE,
+        user=current_user,
+        resource_type="user",
+        resource_id=str(user.id),
+        resource_name=user.username,
+        changes={"before": old_data, "after": {"full_name": user.full_name, "email": user.email}},
+        level=AuditLevel.INFO,
+        success=True
+    )
+
+    return {"message": "User updated successfully", "user": user.to_dict()}
+
+
+@router.delete("/current/users/{tenant_user_id}", dependencies=[Depends(require_tenant_admin)])
+async def remove_user(
+    request: Request,
+    tenant_user_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    从租户移除用户 (租户管理员)
+    """
+    tenant = get_current_tenant(request)
+
+    # 查找租户用户
+    tenant_user = db.query(TenantUser).filter(
+        TenantUser.id == tenant_user_id,
+        TenantUser.tenant_id == tenant.id
+    ).first()
+
+    if not tenant_user:
+        raise HTTPException(status_code=404, detail="Tenant user not found")
+
+    # 防止删除自己
+    if tenant_user.user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot remove yourself"
+        )
+
+    # 获取用户信息用于日志
+    user = db.query(User).filter(User.id == tenant_user.user_id).first()
+    username = user.username if user else "unknown"
+
+    # 删除租户用户关联
+    db.delete(tenant_user)
+    db.commit()
+
+    # 审计日志
+    audit = AuditService(db)
+    audit.log(
+        action=AuditAction.USER_REMOVE,
+        user=current_user,
+        resource_type="tenant_user",
+        resource_id=str(tenant_user_id),
+        resource_name=username,
+        level=AuditLevel.WARN,
+        success=True
+    )
+
+    return {"message": "User removed from tenant successfully"}
+
+
+@router.patch("/current/users/{tenant_user_id}/status", dependencies=[Depends(require_tenant_admin)])
+async def update_user_status(
+    request: Request,
+    tenant_user_id: str,
+    status_data: UpdateUserStatusRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    更新用户状态 (租户管理员)
+    """
+    tenant = get_current_tenant(request)
+
+    # 查找租户用户
+    tenant_user = db.query(TenantUser).filter(
+        TenantUser.id == tenant_user_id,
+        TenantUser.tenant_id == tenant.id
+    ).first()
+
+    if not tenant_user:
+        raise HTTPException(status_code=404, detail="Tenant user not found")
+
+    # 防止禁用自己
+    if tenant_user.user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot change your own status"
+        )
+
+    old_status = tenant_user.status
+    tenant_user.status = status_data.status
+
+    db.commit()
+
+    # 获取用户信息用于日志
+    user = db.query(User).filter(User.id == tenant_user.user_id).first()
+    username = user.username if user else "unknown"
+
+    # 审计日志
+    audit = AuditService(db)
+    audit.log(
+        action=AuditAction.USER_UPDATE if status_data.status == "active" else AuditAction.USER_DISABLE,
+        user=current_user,
+        resource_type="tenant_user",
+        resource_id=str(tenant_user_id),
+        resource_name=username,
+        changes={"before": old_status, "after": status_data.status},
+        level=AuditLevel.WARN if status_data.status == "disabled" else AuditLevel.INFO,
+        success=True
+    )
+
+    return {"message": f"User status updated to {status_data.status}"}
+
+
+@router.patch("/current/users/{tenant_user_id}/role", dependencies=[Depends(require_tenant_admin)])
+async def update_user_role(
+    request: Request,
+    tenant_user_id: str,
+    role_data: UpdateUserRoleRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    更新用户角色 (租户管理员)
+    """
+    tenant = get_current_tenant(request)
+
+    # 查找租户用户
+    tenant_user = db.query(TenantUser).filter(
+        TenantUser.id == tenant_user_id,
+        TenantUser.tenant_id == tenant.id
+    ).first()
+
+    if not tenant_user:
+        raise HTTPException(status_code=404, detail="Tenant user not found")
+
+    # 查找新角色
+    new_role = db.query(TenantRole).filter(
+        TenantRole.tenant_id == tenant.id,
+        TenantRole.name == role_data.role_name
+    ).first()
+
+    if not new_role:
+        raise HTTPException(status_code=404, detail="Role not found")
+
+    old_role_name = tenant_user.role.name if tenant_user.role else "none"
+    tenant_user.role_id = new_role.id
+
+    db.commit()
+
+    # 获取用户信息用于日志
+    user = db.query(User).filter(User.id == tenant_user.user_id).first()
+    username = user.username if user else "unknown"
+
+    # 审计日志
+    audit = AuditService(db)
+    audit.log(
+        action=AuditAction.ROLE_ASSIGN,
+        user=current_user,
+        resource_type="tenant_user",
+        resource_id=str(tenant_user_id),
+        resource_name=username,
+        changes={"before": old_role_name, "after": role_data.role_name},
+        level=AuditLevel.INFO,
+        success=True
+    )
+
+    return {"message": "User role updated successfully"}
+
+
+@router.post("/current/users/{tenant_user_id}/reset-password", dependencies=[Depends(require_tenant_admin)])
+async def reset_user_password(
+    request: Request,
+    tenant_user_id: str,
+    password_data: ResetPasswordRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    重置用户密码 (租户管理员)
+    """
+    from api.auth import get_password_hash
+
+    tenant = get_current_tenant(request)
+
+    # 查找租户用户
+    tenant_user = db.query(TenantUser).filter(
+        TenantUser.id == tenant_user_id,
+        TenantUser.tenant_id == tenant.id
+    ).first()
+
+    if not tenant_user:
+        raise HTTPException(status_code=404, detail="Tenant user not found")
+
+    # 获取实际用户对象
+    user = db.query(User).filter(User.id == tenant_user.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # 更新密码
+    user.hashed_password = get_password_hash(password_data.new_password)
+
+    db.commit()
+
+    # 审计日志
+    audit = AuditService(db)
+    audit.log(
+        action=AuditAction.PASSWORD_RESET,
+        user=current_user,
+        resource_type="user",
+        resource_id=str(user.id),
+        resource_name=user.username,
+        level=AuditLevel.WARN,
+        success=True
+    )
+
+    return {"message": "Password reset successfully"}
+
+
+# ========== Role Management Routes ==========
+
+@router.get("/current/roles/{role_id}")
+async def get_role(
+    request: Request,
+    role_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    获取角色详情
+    """
+    tenant = get_current_tenant(request)
+
+    role = db.query(TenantRole).filter(
+        TenantRole.id == role_id,
+        TenantRole.tenant_id == tenant.id
+    ).first()
+
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+
+    return role.to_dict()
+
+
+@router.patch("/current/roles/{role_id}", dependencies=[Depends(require_tenant_admin)])
+async def update_role(
+    request: Request,
+    role_id: str,
+    role_data: RoleUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    更新角色 (租户管理员)
+    """
+    tenant = get_current_tenant(request)
+
+    # 查找角色
+    role = db.query(TenantRole).filter(
+        TenantRole.id == role_id,
+        TenantRole.tenant_id == tenant.id
+    ).first()
+
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+
+    # 系统角色不可修改
+    if role.is_system:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot modify system roles"
+        )
+
+    # 保存变更前的数据
+    old_data = role.to_dict()
+
+    # 更新字段
+    for key, value in role_data.dict(exclude_unset=True).items():
+        setattr(role, key, value)
+
+    db.commit()
+
+    # 审计日志
+    audit = AuditService(db)
+    audit.log(
+        action=AuditAction.ROLE_UPDATE,
+        user=current_user,
+        resource_type="role",
+        resource_id=str(role_id),
+        resource_name=role.name,
+        changes={"before": old_data, "after": role.to_dict()},
+        level=AuditLevel.INFO,
+        success=True
+    )
+
+    return role.to_dict()
+
+
+@router.delete("/current/roles/{role_id}", dependencies=[Depends(require_tenant_admin)])
+async def delete_role(
+    request: Request,
+    role_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    删除角色 (租户管理员)
+    """
+    tenant = get_current_tenant(request)
+
+    # 查找角色
+    role = db.query(TenantRole).filter(
+        TenantRole.id == role_id,
+        TenantRole.tenant_id == tenant.id
+    ).first()
+
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+
+    # 系统角色不可删除
+    if role.is_system:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete system roles"
+        )
+
+    # 检查是否有用户使用此角色
+    users_with_role = db.query(TenantUser).filter(
+        TenantUser.role_id == role_id
+    ).count()
+
+    if users_with_role > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot delete role: {users_with_role} user(s) still assigned to this role"
+        )
+
+    role_name = role.name
+
+    # 删除角色
+    db.delete(role)
+    db.commit()
+
+    # 审计日志
+    audit = AuditService(db)
+    audit.log(
+        action=AuditAction.ROLE_DELETE,
+        user=current_user,
+        resource_type="role",
+        resource_id=str(role_id),
+        resource_name=role_name,
+        level=AuditLevel.WARN,
+        success=True
+    )
+
+    return {"message": "Role deleted successfully"}
