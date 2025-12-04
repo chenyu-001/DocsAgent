@@ -297,13 +297,16 @@ def fix_migration_conflicts():
                 logger.info("\n步骤 6: 迁移现有用户到默认租户...")
 
                 conn.execute(text("""
-                    INSERT INTO tenant_users (id, tenant_id, user_id, role_id, status)
+                    INSERT INTO tenant_users (id, tenant_id, user_id, role_id, status, joined_at, created_at, updated_at)
                     SELECT
                         gen_random_uuid(),
                         '00000000-0000-0000-0000-000000000001',
                         u.id,
                         (SELECT id FROM tenant_roles WHERE tenant_id = '00000000-0000-0000-0000-000000000001' AND is_default = true LIMIT 1),
-                        'active'
+                        'active',
+                        NOW(),
+                        NOW(),
+                        NOW()
                     FROM users u
                     WHERE NOT EXISTS (
                         SELECT 1 FROM tenant_users tu
