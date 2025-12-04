@@ -1543,3 +1543,117 @@ async def get_audit_stats(
             for date, count in recent_logs
         ]
     }
+
+
+# ========== Bootstrap/Fix Admin Permissions (Temporary Endpoint) ==========
+
+@router.post("/bootstrap-admin")
+async def bootstrap_admin_permissions(
+    username: str = "admin",
+    db: Session = Depends(get_db)
+):
+    """
+    临时端点：修复admin用户权限
+    Temporary endpoint to fix admin user permissions
+
+    This endpoint adds the admin user to the default tenant with tenant_admin role.
+    Should be called once to bootstrap the system.
+
+    WARNING: This endpoint has no authentication. Remove or secure it in production!
+    """
+    try:
+        DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000001"
+
+        # 1. Find the user
+        user = db.query(User).filter(User.username == username).first()
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail=f"User {username} not found"
+            )
+
+        # 2. Check/create PlatformAdmin
+        platform_admin = db.query(PlatformAdmin).filter(
+            PlatformAdmin.user_id == user.id
+        ).first()
+
+        if not platform_admin:
+            platform_admin = PlatformAdmin(
+                user_id=user.id,
+                role=PlatformRole.SUPER_ADMIN,
+                scope=None
+            )
+            db.add(platform_admin)
+            db.commit()
+        elif platform_admin.role != PlatformRole.SUPER_ADMIN:
+            platform_admin.role = PlatformRole.SUPER_ADMIN
+            db.commit()
+
+        # 3. Find default tenant
+        default_tenant = db.query(Tenant).filter(
+            Tenant.id == DEFAULT_TENANT_ID
+        ).first()
+
+        if not default_tenant:
+            raise HTTPException(
+                status_code=404,
+                detail="Default tenant not found"
+            )
+
+        # 4. Find tenant_admin role
+        tenant_admin_role = db.query(TenantRole).filter(
+            TenantRole.tenant_id == default_tenant.id,
+            TenantRole.name == "tenant_admin"
+        ).first()
+
+        if not tenant_admin_role:
+            raise HTTPException(
+                status_code=404,
+                detail="tenant_admin role not found"
+            )
+
+        # 5. Check/create TenantUser
+        tenant_user = db.query(TenantUser).filter(
+            TenantUser.user_id == user.id,
+            TenantUser.tenant_id == default_tenant.id
+        ).first()
+
+        if not tenant_user:
+            tenant_user = TenantUser(
+                id=uuid.uuid4(),
+                tenant_id=default_tenant.id,
+                user_id=user.id,
+                role_id=tenant_admin_role.id,
+                status="active"
+            )
+            db.add(tenant_user)
+            db.commit()
+            message = f"Successfully added {username} to default tenant as tenant_admin"
+        elif tenant_user.role_id != tenant_admin_role.id:
+            tenant_user.role_id = tenant_admin_role.id
+            tenant_user.status = "active"
+            db.commit()
+            message = f"Successfully updated {username} role to tenant_admin"
+        else:
+            message = f"User {username} already has tenant_admin role"
+
+        return {
+            "success": True,
+            "message": message,
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "is_platform_admin": True,
+                "is_tenant_admin": True,
+                "tenant_id": str(default_tenant.id)
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to bootstrap admin: {str(e)}"
+        )
