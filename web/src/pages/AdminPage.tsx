@@ -1,17 +1,21 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authApi } from '../api/client'
-import type { User, Tenant, TenantUser } from '../api/types'
+import type { User, Tenant } from '../api/types'
+import UserManagement from '../components/admin/UserManagement'
+import RoleManagement from '../components/admin/RoleManagement'
 
 const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000001'
+
+type TabType = 'users' | 'roles' | 'tenant'
 
 export default function AdminPage() {
   const navigate = useNavigate()
   const [user, setUser] = useState<User | null>(null)
   const [tenant, setTenant] = useState<Tenant | null>(null)
-  const [tenantUsers, setTenantUsers] = useState<TenantUser[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<TabType>('users')
 
   useEffect(() => {
     loadData()
@@ -47,19 +51,6 @@ export default function AdminPage() {
         setTenant(tenantData)
       }
 
-      // Get tenant users
-      const usersRes = await fetch(`http://localhost:8000/api/tenants/current/users`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'X-Tenant-ID': DEFAULT_TENANT_ID
-        }
-      })
-
-      if (usersRes.ok) {
-        const usersData: TenantUser[] = await usersRes.json()
-        setTenantUsers(usersData)
-      }
-
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data')
     } finally {
@@ -75,8 +66,9 @@ export default function AdminPage() {
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('zh-CN')
+  const handleError = (errorMsg: string) => {
+    setError(errorMsg)
+    setTimeout(() => setError(null), 5000)
   }
 
   if (loading) {
@@ -87,7 +79,7 @@ export default function AdminPage() {
     )
   }
 
-  if (error) {
+  if (error && !user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
@@ -102,6 +94,12 @@ export default function AdminPage() {
       </div>
     )
   }
+
+  const tabs: { key: TabType; label: string; icon: string }[] = [
+    { key: 'tenant', label: '租户概览', icon: '📊' },
+    { key: 'users', label: '用户管理', icon: '👥' },
+    { key: 'roles', label: '角色权限', icon: '🔐' },
+  ]
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -125,146 +123,131 @@ export default function AdminPage() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Tenant Info */}
-        {tenant && (
-          <div className="bg-white rounded-lg shadow mb-6">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">租户信息</h2>
-            </div>
-            <div className="px-6 py-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <span className="text-gray-600">租户名称：</span>
-                  <span className="font-medium">{tenant.name}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">标识：</span>
-                  <span className="font-mono text-sm">{tenant.slug}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">部署模式：</span>
-                  <span className="font-medium">{tenant.deploy_mode}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">状态：</span>
-                  <span className={`px-2 py-1 rounded text-sm ${
-                    tenant.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {tenant.status}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-600">用户数：</span>
-                  <span className="font-medium">{tenant.user_count} / {tenant.user_quota}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">文档数：</span>
-                  <span className="font-medium">{tenant.document_count} / {tenant.document_quota}</span>
-                </div>
-                <div className="col-span-2">
-                  <span className="text-gray-600">存储使用：</span>
-                  <div className="mt-2">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>{formatBytes(tenant.storage_used_bytes)}</span>
-                      <span>{formatBytes(tenant.storage_quota_bytes)}</span>
+      {/* Error Toast */}
+      {error && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+            <span className="block sm:inline">{error}</span>
+            <button
+              onClick={() => setError(null)}
+              className="absolute top-0 bottom-0 right-0 px-4 py-3"
+            >
+              <span className="text-2xl">&times;</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+        <div className="bg-white rounded-lg shadow">
+          <div className="border-b border-gray-200">
+            <nav className="flex -mb-px">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === tab.key
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <span className="mr-2">{tab.icon}</span>
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          {/* Tab Content */}
+          <div className="p-6">
+            {/* Tenant Overview Tab */}
+            {activeTab === 'tenant' && tenant && (
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-6">租户信息</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="text-sm text-gray-600 mb-1">租户名称</div>
+                    <div className="text-lg font-medium text-gray-900">{tenant.name}</div>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="text-sm text-gray-600 mb-1">标识</div>
+                    <div className="text-lg font-mono text-gray-900">{tenant.slug}</div>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="text-sm text-gray-600 mb-1">部署模式</div>
+                    <div className="text-lg font-medium text-gray-900">{tenant.deploy_mode}</div>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="text-sm text-gray-600 mb-1">状态</div>
+                    <div>
+                      <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
+                        tenant.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {tenant.status}
+                      </span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="text-sm text-gray-600 mb-1">用户数</div>
+                    <div className="text-lg font-medium text-gray-900">
+                      {tenant.user_count} / {tenant.user_quota}
+                    </div>
+                    <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
                       <div
-                        className={`h-2 rounded-full ${
+                        className="bg-blue-600 h-2 rounded-full"
+                        style={{ width: `${Math.min((tenant.user_count / tenant.user_quota) * 100, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="text-sm text-gray-600 mb-1">文档数</div>
+                    <div className="text-lg font-medium text-gray-900">
+                      {tenant.document_count} / {tenant.document_quota}
+                    </div>
+                    <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full"
+                        style={{ width: `${Math.min((tenant.document_count / tenant.document_quota) * 100, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="col-span-2 bg-gray-50 rounded-lg p-4">
+                    <div className="text-sm text-gray-600 mb-2">存储使用</div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="font-medium">{formatBytes(tenant.storage_used_bytes)}</span>
+                      <span className="text-gray-600">{formatBytes(tenant.storage_quota_bytes)}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div
+                        className={`h-3 rounded-full transition-all ${
                           tenant.storage_usage_percent > 80 ? 'bg-red-600' :
                           tenant.storage_usage_percent > 60 ? 'bg-yellow-600' : 'bg-green-600'
                         }`}
                         style={{ width: `${Math.min(tenant.storage_usage_percent, 100)}%` }}
                       />
                     </div>
-                    <div className="text-sm text-gray-600 mt-1">
-                      {tenant.storage_usage_percent}% 已使用
+                    <div className="text-sm text-gray-600 mt-2">
+                      {tenant.storage_usage_percent.toFixed(2)}% 已使用
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* Users List */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">租户用户列表</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    用户ID
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    角色
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    部门
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    状态
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    加入时间
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {tenantUsers.map((tu) => (
-                  <tr key={tu.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {tu.user_id}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {tu.role_name || '无角色'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {tu.department_name || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        tu.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {tu.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(tu.joined_at)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {tenantUsers.length === 0 && (
-            <div className="px-6 py-8 text-center text-gray-500">
-              暂无用户数据
-            </div>
-          )}
-        </div>
+            {/* User Management Tab */}
+            {activeTab === 'users' && (
+              <UserManagement onError={handleError} />
+            )}
 
-        {/* API Documentation Link */}
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="text-lg font-medium text-blue-900 mb-2">更多管理功能</h3>
-          <p className="text-blue-700 mb-3">
-            完整的管理功能可以通过 API 文档访问：
-          </p>
-          <a
-            href="http://localhost:8000/docs"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            打开 API 文档 (Swagger UI)
-          </a>
+            {/* Role Management Tab */}
+            {activeTab === 'roles' && (
+              <RoleManagement onError={handleError} />
+            )}
+          </div>
         </div>
-      </main>
+      </div>
     </div>
   )
 }
