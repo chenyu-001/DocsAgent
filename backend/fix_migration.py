@@ -284,11 +284,11 @@ def fix_migration_conflicts():
                 logger.info("\n步骤 5: 创建默认角色...")
 
                 conn.execute(text("""
-                    INSERT INTO tenant_roles (id, tenant_id, name, display_name, description, level, permissions, is_system, is_default)
+                    INSERT INTO tenant_roles (id, tenant_id, name, display_name, description, level, permissions, is_system, is_default, created_at, updated_at)
                     VALUES
-                        (gen_random_uuid(), '00000000-0000-0000-0000-000000000001', 'tenant_admin', '租户管理员', '拥有租户内所有权限', 100, 255, true, false),
-                        (gen_random_uuid(), '00000000-0000-0000-0000-000000000001', 'member', '成员', '普通成员,可以创建和编辑自己的文档', 10, 67, true, true),
-                        (gen_random_uuid(), '00000000-0000-0000-0000-000000000001', 'guest', '访客', '只读访问权限', 1, 33, true, false)
+                        (gen_random_uuid(), '00000000-0000-0000-0000-000000000001', 'tenant_admin', '租户管理员', '拥有租户内所有权限', 100, 255, true, false, NOW(), NOW()),
+                        (gen_random_uuid(), '00000000-0000-0000-0000-000000000001', 'member', '成员', '普通成员,可以创建和编辑自己的文档', 10, 67, true, true, NOW(), NOW()),
+                        (gen_random_uuid(), '00000000-0000-0000-0000-000000000001', 'guest', '访客', '只读访问权限', 1, 33, true, false, NOW(), NOW())
                     ON CONFLICT DO NOTHING
                 """))
                 logger.info("   ✓ 默认角色已创建")
