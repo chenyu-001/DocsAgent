@@ -998,3 +998,548 @@ async def delete_role(
     )
 
     return {"message": "Role deleted successfully"}
+
+
+# ========== Department Management Routes ==========
+
+class DepartmentCreate(BaseModel):
+    """创建部门请求"""
+    name: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = None
+    parent_id: Optional[str] = None
+    manager_id: Optional[int] = None
+
+
+class DepartmentUpdate(BaseModel):
+    """更新部门请求"""
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = None
+    manager_id: Optional[int] = None
+
+
+@router.post("/current/departments", dependencies=[Depends(require_tenant_admin)])
+async def create_department(
+    request: Request,
+    dept_data: DepartmentCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    创建部门 (租户管理员)
+    """
+    tenant = get_current_tenant(request)
+
+    # 检查父部门是否存在
+    parent_dept = None
+    if dept_data.parent_id:
+        parent_dept = db.query(Department).filter(
+            Department.id == dept_data.parent_id,
+            Department.tenant_id == tenant.id
+        ).first()
+        if not parent_dept:
+            raise HTTPException(status_code=404, detail="Parent department not found")
+
+    # 计算部门路径和层级
+    if parent_dept:
+        path = f"{parent_dept.path}/{dept_data.name}"
+        level = parent_dept.level + 1
+    else:
+        path = f"/{dept_data.name}"
+        level = 0
+
+    # 创建部门
+    department = Department(
+        id=uuid.uuid4(),
+        tenant_id=tenant.id,
+        name=dept_data.name,
+        description=dept_data.description,
+        parent_id=dept_data.parent_id,
+        path=path,
+        level=level,
+        manager_id=dept_data.manager_id
+    )
+
+    db.add(department)
+    db.commit()
+    db.refresh(department)
+
+    # 审计日志
+    audit = AuditService(db)
+    audit.log(
+        action=AuditAction.DEPT_CREATE,
+        user=current_user,
+        resource_type="department",
+        resource_id=str(department.id),
+        resource_name=department.name,
+        level=AuditLevel.INFO,
+        success=True
+    )
+
+    return department.to_dict()
+
+
+@router.get("/current/departments")
+async def list_departments(
+    request: Request,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    获取部门列表（树形结构）
+    """
+    tenant = get_current_tenant(request)
+
+    departments = db.query(Department).filter(
+        Department.tenant_id == tenant.id
+    ).order_by(Department.path).all()
+
+    # Build tree structure
+    dept_dict = {str(d.id): d.to_dict() for d in departments}
+
+    # Add children array to each department
+    for dept_id, dept in dept_dict.items():
+        dept['children'] = []
+        dept['member_count'] = db.query(TenantUser).filter(
+            TenantUser.department_id == dept_id
+        ).count()
+
+    # Build parent-child relationships
+    root_depts = []
+    for dept_id, dept in dept_dict.items():
+        if dept['parent_id']:
+            parent = dept_dict.get(dept['parent_id'])
+            if parent:
+                parent['children'].append(dept)
+        else:
+            root_depts.append(dept)
+
+    return {"departments": root_depts, "total": len(departments)}
+
+
+@router.get("/current/departments/{dept_id}")
+async def get_department(
+    request: Request,
+    dept_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    获取部门详情
+    """
+    tenant = get_current_tenant(request)
+
+    department = db.query(Department).filter(
+        Department.id == dept_id,
+        Department.tenant_id == tenant.id
+    ).first()
+
+    if not department:
+        raise HTTPException(status_code=404, detail="Department not found")
+
+    dept_dict = department.to_dict()
+
+    # Add member count
+    dept_dict['member_count'] = db.query(TenantUser).filter(
+        TenantUser.department_id == dept_id
+    ).count()
+
+    return dept_dict
+
+
+@router.patch("/current/departments/{dept_id}", dependencies=[Depends(require_tenant_admin)])
+async def update_department(
+    request: Request,
+    dept_id: str,
+    dept_data: DepartmentUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    更新部门 (租户管理员)
+    """
+    tenant = get_current_tenant(request)
+
+    department = db.query(Department).filter(
+        Department.id == dept_id,
+        Department.tenant_id == tenant.id
+    ).first()
+
+    if not department:
+        raise HTTPException(status_code=404, detail="Department not found")
+
+    old_data = department.to_dict()
+
+    # Update fields
+    if dept_data.name is not None:
+        # Update path for this department and all children
+        old_path = department.path
+        new_path = old_path.rsplit('/', 1)[0] + '/' + dept_data.name if '/' in old_path else '/' + dept_data.name
+
+        department.name = dept_data.name
+        department.path = new_path
+
+        # Update children paths
+        children = db.query(Department).filter(
+            Department.tenant_id == tenant.id,
+            Department.path.like(f"{old_path}/%")
+        ).all()
+
+        for child in children:
+            child.path = child.path.replace(old_path, new_path, 1)
+
+    if dept_data.description is not None:
+        department.description = dept_data.description
+
+    if dept_data.manager_id is not None:
+        department.manager_id = dept_data.manager_id
+
+    db.commit()
+
+    # 审计日志
+    audit = AuditService(db)
+    audit.log(
+        action=AuditAction.DEPT_UPDATE,
+        user=current_user,
+        resource_type="department",
+        resource_id=str(dept_id),
+        resource_name=department.name,
+        changes={"before": old_data, "after": department.to_dict()},
+        level=AuditLevel.INFO,
+        success=True
+    )
+
+    return department.to_dict()
+
+
+@router.delete("/current/departments/{dept_id}", dependencies=[Depends(require_tenant_admin)])
+async def delete_department(
+    request: Request,
+    dept_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    删除部门 (租户管理员)
+    """
+    tenant = get_current_tenant(request)
+
+    department = db.query(Department).filter(
+        Department.id == dept_id,
+        Department.tenant_id == tenant.id
+    ).first()
+
+    if not department:
+        raise HTTPException(status_code=404, detail="Department not found")
+
+    # Check if department has children
+    children_count = db.query(Department).filter(
+        Department.parent_id == dept_id
+    ).count()
+
+    if children_count > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot delete department: {children_count} sub-department(s) exist"
+        )
+
+    # Check if department has members
+    member_count = db.query(TenantUser).filter(
+        TenantUser.department_id == dept_id
+    ).count()
+
+    if member_count > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot delete department: {member_count} member(s) assigned"
+        )
+
+    dept_name = department.name
+
+    db.delete(department)
+    db.commit()
+
+    # 审计日志
+    audit = AuditService(db)
+    audit.log(
+        action=AuditAction.DEPT_DELETE,
+        user=current_user,
+        resource_type="department",
+        resource_id=str(dept_id),
+        resource_name=dept_name,
+        level=AuditLevel.WARN,
+        success=True
+    )
+
+    return {"message": "Department deleted successfully"}
+
+
+@router.get("/current/departments/{dept_id}/members")
+async def get_department_members(
+    request: Request,
+    dept_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    获取部门成员列表
+    """
+    tenant = get_current_tenant(request)
+
+    # Check if department exists
+    department = db.query(Department).filter(
+        Department.id == dept_id,
+        Department.tenant_id == tenant.id
+    ).first()
+
+    if not department:
+        raise HTTPException(status_code=404, detail="Department not found")
+
+    # Get members
+    members = db.query(TenantUser).filter(
+        TenantUser.department_id == dept_id
+    ).all()
+
+    # Enrich with user details
+    members_with_details = []
+    for member in members:
+        member_dict = member.to_dict()
+        user = db.query(User).filter(User.id == member.user_id).first()
+        if user:
+            member_dict['username'] = user.username
+            member_dict['email'] = user.email
+            member_dict['full_name'] = user.full_name
+        members_with_details.append(member_dict)
+
+    return {"members": members_with_details}
+
+
+# ========== Audit Log Routes ==========
+
+@router.get("/current/audit-logs")
+async def list_audit_logs(
+    request: Request,
+    skip: int = 0,
+    limit: int = 100,
+    action: Optional[str] = None,
+    level: Optional[str] = None,
+    user_id: Optional[int] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    current_user: User = Depends(require_tenant_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    获取审计日志列表 (租户管理员)
+    支持筛选和分页
+    """
+    from models.audit_models import AuditLog, AuditAction, AuditLevel
+    from datetime import datetime as dt
+
+    tenant = get_current_tenant(request)
+
+    # Build query
+    query = db.query(AuditLog).filter(
+        AuditLog.tenant_id == tenant.id
+    )
+
+    # Apply filters
+    if action:
+        try:
+            query = query.filter(AuditLog.action == AuditAction(action))
+        except ValueError:
+            pass  # Invalid action, ignore filter
+
+    if level:
+        try:
+            query = query.filter(AuditLog.level == AuditLevel(level))
+        except ValueError:
+            pass  # Invalid level, ignore filter
+
+    if user_id:
+        query = query.filter(AuditLog.user_id == user_id)
+
+    if start_date:
+        try:
+            start_dt = dt.fromisoformat(start_date)
+            query = query.filter(AuditLog.timestamp >= start_dt)
+        except ValueError:
+            pass  # Invalid date format, ignore
+
+    if end_date:
+        try:
+            end_dt = dt.fromisoformat(end_date)
+            query = query.filter(AuditLog.timestamp <= end_dt)
+        except ValueError:
+            pass  # Invalid date format, ignore
+
+    # Get total count
+    total = query.count()
+
+    # Apply pagination
+    logs = query.order_by(AuditLog.timestamp.desc()).offset(skip).limit(limit).all()
+
+    return {
+        "logs": [log.to_dict() for log in logs],
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
+
+
+@router.get("/current/audit-logs/export")
+async def export_audit_logs(
+    request: Request,
+    action: Optional[str] = None,
+    level: Optional[str] = None,
+    user_id: Optional[int] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    format: str = "json",
+    current_user: User = Depends(require_tenant_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    导出审计日志 (租户管理员)
+    支持 JSON 和 CSV 格式
+    """
+    from models.audit_models import AuditLog, AuditAction, AuditLevel
+    from datetime import datetime as dt
+    from fastapi.responses import StreamingResponse
+    import json
+    import io
+    import csv
+
+    tenant = get_current_tenant(request)
+
+    # Build query (same as list)
+    query = db.query(AuditLog).filter(
+        AuditLog.tenant_id == tenant.id
+    )
+
+    if action:
+        try:
+            query = query.filter(AuditLog.action == AuditAction(action))
+        except ValueError:
+            pass
+
+    if level:
+        try:
+            query = query.filter(AuditLog.level == AuditLevel(level))
+        except ValueError:
+            pass
+
+    if user_id:
+        query = query.filter(AuditLog.user_id == user_id)
+
+    if start_date:
+        try:
+            start_dt = dt.fromisoformat(start_date)
+            query = query.filter(AuditLog.timestamp >= start_dt)
+        except ValueError:
+            pass
+
+    if end_date:
+        try:
+            end_dt = dt.fromisoformat(end_date)
+            query = query.filter(AuditLog.timestamp <= end_dt)
+        except ValueError:
+            pass
+
+    logs = query.order_by(AuditLog.timestamp.desc()).all()
+
+    if format == "csv":
+        # Create CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Header
+        writer.writerow([
+            "时间", "操作", "级别", "用户", "资源类型", "资源名称", "IP地址", "结果"
+        ])
+
+        # Data
+        for log in logs:
+            writer.writerow([
+                log.timestamp.isoformat() if log.timestamp else "",
+                log.action.value if log.action else "",
+                log.level.value if log.level else "",
+                log.username or "",
+                log.resource_type or "",
+                log.resource_name or "",
+                log.ip_address or "",
+                "成功" if log.success else "失败"
+            ])
+
+        output.seek(0)
+        return StreamingResponse(
+            io.BytesIO(output.getvalue().encode('utf-8')),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename=audit_logs_{dt.now().strftime('%Y%m%d_%H%M%S')}.csv"}
+        )
+    else:
+        # Return JSON
+        data = [log.to_dict() for log in logs]
+        return StreamingResponse(
+            io.BytesIO(json.dumps(data, ensure_ascii=False, indent=2).encode('utf-8')),
+            media_type="application/json",
+            headers={"Content-Disposition": f"attachment; filename=audit_logs_{dt.now().strftime('%Y%m%d_%H%M%S')}.json"}
+        )
+
+
+@router.get("/current/audit-logs/stats")
+async def get_audit_stats(
+    request: Request,
+    current_user: User = Depends(require_tenant_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    获取审计日志统计 (租户管理员)
+    """
+    from models.audit_models import AuditLog, AuditAction, AuditLevel
+    from sqlalchemy import func
+    from datetime import datetime, timedelta
+
+    tenant = get_current_tenant(request)
+
+    # Total logs
+    total_logs = db.query(AuditLog).filter(
+        AuditLog.tenant_id == tenant.id
+    ).count()
+
+    # Logs by level
+    logs_by_level = db.query(
+        AuditLog.level,
+        func.count(AuditLog.id)
+    ).filter(
+        AuditLog.tenant_id == tenant.id
+    ).group_by(AuditLog.level).all()
+
+    # Logs by action (top 10)
+    logs_by_action = db.query(
+        AuditLog.action,
+        func.count(AuditLog.id)
+    ).filter(
+        AuditLog.tenant_id == tenant.id
+    ).group_by(AuditLog.action).order_by(
+        func.count(AuditLog.id).desc()
+    ).limit(10).all()
+
+    # Recent activity (last 7 days)
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    recent_logs = db.query(
+        func.date(AuditLog.timestamp).label('date'),
+        func.count(AuditLog.id).label('count')
+    ).filter(
+        AuditLog.tenant_id == tenant.id,
+        AuditLog.timestamp >= seven_days_ago
+    ).group_by(func.date(AuditLog.timestamp)).all()
+
+    return {
+        "total_logs": total_logs,
+        "logs_by_level": {str(level): count for level, count in logs_by_level},
+        "logs_by_action": {str(action): count for action, count in logs_by_action},
+        "recent_activity": [
+            {"date": str(date), "count": count}
+            for date, count in recent_logs
+        ]
+    }
