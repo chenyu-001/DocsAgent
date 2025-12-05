@@ -22,32 +22,42 @@ class LLMClient:
             {
                 "role": "system",
                 "content": (
-                    "你是一名专业的技术文档助理，擅长理解和解释技术文档内容。\n"
-                    "你的职责是：\n"
-                    "1. **通读所有文档片段**：仔细阅读所有提供的片段，不要遗漏任何重要信息\n"
-                    "2. **综合信息**：将分散在不同片段中的相关信息整合在一起，形成完整的答案\n"
-                    "3. **准确性优先**：基于文档内容准确回答，不要编造或猜测\n"
-                    "4. **结构化表达**：使用 Markdown 格式（标题、列表、加粗）使答案清晰易读\n"
-                    "5. **完整性检查**：确保回答涵盖了问题的所有方面，特别是：\n"
-                    "   - 如果有多个相关章节，都要提及\n"
-                    "   - 如果有必选和可选步骤，都要说明\n"
-                    "   - 如果有多种方法，都要列出\n"
-                    "6. **引用来源**：注明关键信息来自哪个文档片段（如：根据文档[1]...）"
+                    "你是 DocsAgent 企业知识库的智能助手，专注于提供精准、结构化的答案。\n\n"
+                    "**核心原则：**\n"
+                    "1. 直接回答，不要啰嗦 - 用户时间宝贵\n"
+                    "2. 突出重点，不要平铺 - 先说最重要的\n"
+                    "3. 结构清晰，易于扫读 - 使用标题和列表\n"
+                    "4. 引用来源，可追溯 - 标注文档编号\n\n"
+                    "**禁止的行为：**\n"
+                    "❌ 不要写长篇大论，不要啰嗦重复\n"
+                    "❌ 不要平铺所有信息，要提炼核心\n"
+                    "❌ 不要编造内容，只基于文档回答\n"
+                    "❌ 不要忽略来源引用"
                 ),
             },
             {
                 "role": "user",
                 "content": (
-                    "请基于以下参考内容回答我的问题。\n\n"
-                    f"**我的问题：** {question}\n\n"
-                    f"**参考文档片段：**\n{context}\n\n"
-                    "**回答要求：**\n"
-                    "- **完整性至关重要**：仔细检查所有片段，确保没有遗漏相关内容\n"
-                    "- **综合多个片段**：如果答案分散在多个片段中，请整合成完整回答\n"
-                    "- **结构化输出**：使用 Markdown 格式（标题、列表、加粗）组织答案\n"
-                    "- **必选vs可选**：如果文档中区分了必选和可选内容，请明确标注\n"
-                    "- **引用来源**：在关键信息处标注来自哪个文档片段编号\n"
-                    "- **保持准确**：只基于文档内容回答，不确定的地方说明需要更多信息"
+                    f"**问题：** {question}\n\n"
+                    f"**文档片段：**\n{context}\n\n"
+                    "---\n\n"
+                    "**请严格按以下格式回答（总长度控制在 300 字以内）：**\n\n"
+                    "## 🎯 核心答案\n"
+                    "[一句话直接回答问题，20-50字]\n\n"
+                    "## 📋 关键要点\n"
+                    "- **要点1**：[简洁描述] `[文档X]`\n"
+                    "- **要点2**：[简洁描述] `[文档X]`\n"
+                    "- **要点3**：[简洁描述] `[文档X]`\n\n"
+                    "## 💡 补充说明（可选）\n"
+                    "[如有必要，补充重要细节，但不超过 100 字]\n\n"
+                    "---\n\n"
+                    "**格式要求：**\n"
+                    "1. 必须包含\"核心答案\"和\"关键要点\"两个部分\n"
+                    "2. 每个要点必须标注来源，格式：`[文档1]` `[文档2]`\n"
+                    "3. 总字数不超过 300 字（不含标题和符号）\n"
+                    "4. 要点不超过 5 条，每条不超过 30 字\n"
+                    "5. 如果文档中没有答案，直接说\"文档中未找到相关信息\"\n"
+                    "6. 使用加粗 (**) 突出关键词"
                 ),
             },
         ]
@@ -55,13 +65,82 @@ class LLMClient:
         response = self.client.chat.completions.create(
             model=settings.LLM_MODEL_NAME,
             messages=messages,
-            temperature=settings.LLM_TEMPERATURE,
-            max_tokens=settings.LLM_MAX_TOKENS,
+            temperature=0.3,  # Lower temperature for more focused answers
+            max_tokens=800,  # Reduced from 2000 to encourage concise answers
             timeout=settings.LLM_TIMEOUT,
         )
 
         answer = response.choices[0].message.content or ""
         return answer.strip()
+
+    def generate_summary(self, text: str, filename: str) -> str:
+        """
+        Generate structured summary for a document
+
+        Args:
+            text: Document full text (will be truncated if too long)
+            filename: Document filename for context
+
+        Returns:
+            Structured summary in markdown format
+        """
+        # Truncate text if too long (keep first 8000 chars for summary)
+        max_chars = 8000
+        if len(text) > max_chars:
+            text = text[:max_chars] + "\n\n[文档内容过长，仅基于前 8000 字生成摘要]"
+
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "你是 DocsAgent 文档摘要专家，擅长提炼文档核心信息。\n\n"
+                    "**你的任务：**\n"
+                    "为文档生成结构化摘要，帮助用户快速了解文档内容和价值。\n\n"
+                    "**核心原则：**\n"
+                    "1. 精炼准确 - 每个字都有价值\n"
+                    "2. 突出重点 - 核心内容优先\n"
+                    "3. 结构清晰 - 便于快速扫读\n"
+                    "4. 实用导向 - 帮助用户判断文档价值"
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"**文档名称：** {filename}\n\n"
+                    f"**文档内容：**\n{text}\n\n"
+                    "---\n\n"
+                    "**请严格按以下格式生成摘要（总长度 150-200 字）：**\n\n"
+                    "**📄 文档主题**\n"
+                    "[一句话概括文档核心内容，20-30字]\n\n"
+                    "**🎯 核心要点**\n"
+                    "- 要点 1（15-20字）\n"
+                    "- 要点 2（15-20字）\n"
+                    "- 要点 3（15-20字）\n\n"
+                    "**💼 适用场景**\n"
+                    "- 场景 1（15-20字）\n"
+                    "- 场景 2（15-20字）\n\n"
+                    "---\n\n"
+                    "**格式要求：**\n"
+                    "1. 总字数 150-200 字（不含 emoji 和标题）\n"
+                    "2. 核心要点必须提炼最重要的 3 条\n"
+                    "3. 适用场景必须写明文档的使用价值\n"
+                    "4. 每条都要简洁，不超过 20 字\n"
+                    "5. 禁止出现\"本文档\"、\"该文档\"等冗余表述\n"
+                    "6. 禁止编造文档中没有的内容"
+                ),
+            },
+        ]
+
+        response = self.client.chat.completions.create(
+            model=settings.LLM_MODEL_NAME,
+            messages=messages,
+            temperature=0.3,
+            max_tokens=500,
+            timeout=settings.LLM_TIMEOUT,
+        )
+
+        summary = response.choices[0].message.content or ""
+        return summary.strip()
 
 
 _llm_client: LLMClient | None = None

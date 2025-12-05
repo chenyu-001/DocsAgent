@@ -16,6 +16,7 @@ from models.chunk_models import Chunk
 from services.parser import DocumentParser
 from services.chunker import get_chunker
 from services.retriever import get_retriever
+from services.llm import get_llm_client
 from utils.hash import compute_text_hash
 
 
@@ -74,6 +75,18 @@ class DocumentProcessor:
                 db.commit()
 
                 logger.info(f"[Doc {document_id}] Parsing completed: {document.word_count} words, {document.page_count} pages")
+
+                # Generate summary after parsing
+                try:
+                    llm = get_llm_client()
+                    summary = llm.generate_summary(parsed_data["text"], document.filename)
+                    document.summary = summary
+                    db.commit()
+                    logger.info(f"[Doc {document_id}] Summary generated successfully")
+                except Exception as e:
+                    logger.warning(f"[Doc {document_id}] Summary generation failed: {e}")
+                    # Don't fail the entire process if summary fails
+                    document.summary = "摘要生成失败"
 
             except Exception as e:
                 logger.error(f"[Doc {document_id}] Parsing failed: {e}")
