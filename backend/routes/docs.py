@@ -178,6 +178,113 @@ async def move_document(
         raise HTTPException(status_code=500, detail=f"Failed to move document: {str(e)}")
 
 
+@router.post("/documents/{document_id}/copy")
+async def copy_document(
+    document_id: int,
+    folder_id: Optional[int] = None,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Copy document to a different folder (or same folder with a new name)
+    Creates a new document record and duplicates all chunks and embeddings
+    """
+    try:
+        from models.chunk_models import Chunk
+        from services.retriever import get_retriever
+        from utils.hash import compute_text_hash
+
+        # Get original document
+        original_doc = db.query(Document).filter(
+            Document.id == document_id,
+            Document.owner_id == current_user.id
+        ).first()
+
+        if not original_doc:
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        # Create new document record (copy all fields except id, created_at, updated_at)
+        new_doc = Document(
+            owner_id=current_user.id,
+            folder_id=folder_id,  # New folder location
+            filename=original_doc.filename,
+            original_filename=original_doc.original_filename,
+            file_type=original_doc.file_type,
+            file_size=original_doc.file_size,
+            storage_path=original_doc.storage_path,  # Share the same physical file
+            status=original_doc.status,
+            title=original_doc.title,
+            author=original_doc.author,
+            subject=original_doc.subject,
+            page_count=original_doc.page_count,
+            word_count=original_doc.word_count,
+            parsed_text=original_doc.parsed_text,
+            summary=original_doc.summary,
+            error_message=None,  # Clear any error messages
+            parsed_at=original_doc.parsed_at,
+        )
+        db.add(new_doc)
+        db.flush()  # Get the new document ID
+
+        # Copy all chunks
+        original_chunks = db.query(Chunk).filter(Chunk.document_id == document_id).all()
+
+        if original_chunks:
+            new_chunk_records = []
+
+            for original_chunk in original_chunks:
+                new_chunk = Chunk(
+                    document_id=new_doc.id,
+                    text=original_chunk.text,
+                    text_hash=original_chunk.text_hash,
+                    chunk_index=original_chunk.chunk_index,
+                    page_number=original_chunk.page_number,
+                    start_char=original_chunk.start_char,
+                    end_char=original_chunk.end_char,
+                    vector_id=f"doc_{new_doc.id}_chunk_{original_chunk.chunk_index}",
+                    chunk_metadata=original_chunk.chunk_metadata,
+                )
+                db.add(new_chunk)
+
+            db.flush()  # Assign IDs to new chunks
+
+            # Prepare chunk records for embedding
+            new_chunks = db.query(Chunk).filter(Chunk.document_id == new_doc.id).all()
+            for chunk in new_chunks:
+                new_chunk_records.append({
+                    "chunk_id": chunk.id,
+                    "document_id": new_doc.id,
+                    "text": chunk.text,
+                    "vector_id": chunk.vector_id,
+                })
+
+            # Copy embeddings to Qdrant
+            retriever = get_retriever()
+            retriever.add_chunks(new_chunk_records)
+
+            logger.info(f"Copied {len(new_chunk_records)} chunks and embeddings for document {new_doc.id}")
+
+        db.commit()
+        db.refresh(new_doc)
+
+        logger.info(f"User {current_user.username} copied document {original_doc.filename} (ID: {document_id} → {new_doc.id}) to folder {folder_id}")
+
+        return {
+            "message": "Document copied successfully",
+            "original_document_id": document_id,
+            "new_document_id": new_doc.id,
+            "folder_id": folder_id,
+            "chunks_copied": len(original_chunks) if original_chunks else 0,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to copy document: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to copy document: {str(e)}")
+
+
 @router.get("/documents/stats/summary")
 async def get_document_stats(
     current_user: User = Depends(get_current_active_user),
