@@ -18,6 +18,11 @@ class LLMClient:
 
     def generate_answer(self, question: str, context: str) -> str:
         """Generate an answer using provided context snippets."""
+        # Estimate question complexity to adjust answer length
+        is_complex = len(question) > 30 or '如何' in question or '步骤' in question or '详细' in question or '流程' in question
+        max_length = "500-800" if is_complex else "200-400"
+        max_tokens = 1200 if is_complex else 600
+
         messages = [
             {
                 "role": "system",
@@ -27,7 +32,7 @@ class LLMClient:
                     "1. 直接回答，不要啰嗦 - 用户时间宝贵\n"
                     "2. 突出重点，不要平铺 - 先说最重要的\n"
                     "3. 结构清晰，易于扫读 - 使用标题和列表\n"
-                    "4. 引用来源，可追溯 - 标注文档编号\n\n"
+                    "4. 引用来源，可追溯 - 必须标注文档编号\n\n"
                     "**禁止的行为：**\n"
                     "❌ 不要写长篇大论，不要啰嗦重复\n"
                     "❌ 不要平铺所有信息，要提炼核心\n"
@@ -41,23 +46,24 @@ class LLMClient:
                     f"**问题：** {question}\n\n"
                     f"**文档片段：**\n{context}\n\n"
                     "---\n\n"
-                    "**请严格按以下格式回答（总长度控制在 300 字以内）：**\n\n"
+                    f"**请严格按以下格式回答（总长度 {max_length} 字）：**\n\n"
                     "## 🎯 核心答案\n"
-                    "[一句话直接回答问题，20-50字]\n\n"
+                    "[一句话直接回答问题，30-80字]\n\n"
                     "## 📋 关键要点\n"
-                    "- **要点1**：[简洁描述] `[文档X]`\n"
-                    "- **要点2**：[简洁描述] `[文档X]`\n"
-                    "- **要点3**：[简洁描述] `[文档X]`\n\n"
+                    "- **要点1**：[简洁描述] `[文档1]`\n"
+                    "- **要点2**：[简洁描述] `[文档2]`\n"
+                    "- **要点3**：[简洁描述] `[文档3]`\n\n"
                     "## 💡 补充说明（可选）\n"
-                    "[如有必要，补充重要细节，但不超过 100 字]\n\n"
+                    "[如有必要，补充重要细节]\n\n"
                     "---\n\n"
                     "**格式要求：**\n"
                     "1. 必须包含\"核心答案\"和\"关键要点\"两个部分\n"
-                    "2. 每个要点必须标注来源，格式：`[文档1]` `[文档2]`\n"
-                    "3. 总字数不超过 300 字（不含标题和符号）\n"
-                    "4. 要点不超过 5 条，每条不超过 30 字\n"
-                    "5. 如果文档中没有答案，直接说\"文档中未找到相关信息\"\n"
-                    "6. 使用加粗 (**) 突出关键词"
+                    "2. 引用格式：`[文档1]` `[文档2]`（数字对应文档片段编号）\n"
+                    "3. 根据问题复杂度调整长度：\n"
+                    "   - 简单问题：200-400字，3-5个要点\n"
+                    "   - 复杂问题（如何、步骤、详细）：500-800字，5-8个要点\n"
+                    "4. 如果文档中没有答案，直接说\"文档中未找到相关信息\"\n"
+                    "5. 使用加粗 (**) 突出关键词"
                 ),
             },
         ]
@@ -66,7 +72,7 @@ class LLMClient:
             model=settings.LLM_MODEL_NAME,
             messages=messages,
             temperature=0.3,  # Lower temperature for more focused answers
-            max_tokens=800,  # Reduced from 2000 to encourage concise answers
+            max_tokens=max_tokens,  # Adaptive based on question complexity
             timeout=settings.LLM_TIMEOUT,
         )
 
