@@ -190,9 +190,10 @@ async def copy_document(
     Creates a new document record and duplicates all chunks and embeddings
     """
     try:
+        import hashlib
+        import time
         from models.chunk_models import Chunk
         from services.retriever import get_retriever
-        from utils.hash import compute_text_hash
 
         # Get original document
         original_doc = db.query(Document).filter(
@@ -203,23 +204,32 @@ async def copy_document(
         if not original_doc:
             raise HTTPException(status_code=404, detail="Document not found")
 
+        # Generate a new unique hash for the copy (original_hash + timestamp + document_id)
+        # This ensures uniqueness while maintaining a reference to the original
+        copy_hash_input = f"{original_doc.file_hash}_{document_id}_{int(time.time() * 1000000)}"
+        new_file_hash = hashlib.sha256(copy_hash_input.encode()).hexdigest()
+
         # Create new document record (copy all fields except id, created_at, updated_at)
         new_doc = Document(
             owner_id=current_user.id,
             folder_id=folder_id,  # New folder location
             filename=original_doc.filename,
-            original_filename=original_doc.original_filename,
+            file_hash=new_file_hash,  # New unique hash for the copy
             file_type=original_doc.file_type,
             file_size=original_doc.file_size,
+            mime_type=original_doc.mime_type,
             storage_path=original_doc.storage_path,  # Share the same physical file
+            preview_path=original_doc.preview_path,
             status=original_doc.status,
             title=original_doc.title,
             author=original_doc.author,
             subject=original_doc.subject,
+            keywords=original_doc.keywords,
             page_count=original_doc.page_count,
             word_count=original_doc.word_count,
             parsed_text=original_doc.parsed_text,
             summary=original_doc.summary,
+            doc_metadata=original_doc.doc_metadata,
             error_message=None,  # Clear any error messages
             parsed_at=original_doc.parsed_at,
         )
