@@ -163,6 +163,14 @@ export const documentApi = {
     return response.data
   },
 
+  // Copy document to folder
+  copy: async (id: number, folderId: number | null): Promise<{ message: string; original_document_id: number; new_document_id: number; folder_id: number | null; chunks_copied: number }> => {
+    const response = await api.post(`/api/documents/${id}/copy`, null, {
+      params: { folder_id: folderId },
+    })
+    return response.data
+  },
+
   // Download document
   download: async (id: number): Promise<Blob> => {
     const response = await api.get(`/api/documents/${id}/download`, { responseType: 'blob' })

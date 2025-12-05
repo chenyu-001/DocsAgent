@@ -133,10 +133,27 @@ export default function DocumentsListPage() {
       setMoveDialogOpen(false)
       setDocumentToMove(null)
       fetchDocuments()
+      fetchStats()
       setToast({ message: 'Document moved successfully', type: 'success' })
     } catch (error) {
       console.error('Failed to move document:', error)
       setToast({ message: 'Failed to move document', type: 'error' })
+    }
+  }
+
+  const handleCopyConfirm = async () => {
+    if (!documentToMove) return
+
+    try {
+      await documentApi.copy(documentToMove.id, targetFolderId)
+      setMoveDialogOpen(false)
+      setDocumentToMove(null)
+      fetchDocuments()
+      fetchStats()
+      setToast({ message: 'Document copied successfully', type: 'success' })
+    } catch (error) {
+      console.error('Failed to copy document:', error)
+      setToast({ message: 'Failed to copy document', type: 'error' })
     }
   }
 
@@ -517,22 +534,22 @@ export default function DocumentsListPage() {
         </div>
       </div>
 
-      {/* Move Document Dialog */}
+      {/* Move/Copy Document Dialog */}
       {moveDialogOpen && documentToMove && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 animate-fadeIn">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Move Document
+              移动或复制文档
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Move "{documentToMove.filename}" to:
+              选择目标文件夹："{documentToMove.filename}"
             </p>
             <select
               value={targetFolderId ?? ''}
               onChange={(e) => setTargetFolderId(e.target.value === '' ? null : Number(e.target.value))}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-6"
             >
-              <option value="">Root / No Folder</option>
+              <option value="">根目录 / 无文件夹</option>
               {flattenFolders(folders).map((folder) => (
                 <option key={folder.id} value={folder.id}>
                   {'  '.repeat(folder.level)}📁 {folder.name}
@@ -547,13 +564,19 @@ export default function DocumentsListPage() {
                 }}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
               >
-                Cancel
+                取消
+              </button>
+              <button
+                onClick={handleCopyConfirm}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+              >
+                复制
               </button>
               <button
                 onClick={handleMoveConfirm}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
               >
-                Move
+                移动
               </button>
             </div>
           </div>
