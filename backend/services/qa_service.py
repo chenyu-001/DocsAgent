@@ -5,8 +5,11 @@ import time
 from typing import Dict, List
 
 from loguru import logger
+from sqlalchemy.orm import Session
 
 from api.config import settings
+from api.db import SessionLocal
+from models.document_models import Document
 from services.retriever import get_retriever
 from services.llm import get_llm_client
 
@@ -18,11 +21,50 @@ class QAService:
         self.retriever = get_retriever()
         self.llm = get_llm_client()
 
+    def _enrich_hits_with_document_info(self, hits: List[Dict]) -> List[Dict]:
+        """Enrich search hits with document metadata (filename, path, etc)"""
+        if not hits:
+            return hits
+
+        db: Session = SessionLocal()
+        try:
+            # Get unique document IDs
+            doc_ids = list(set(hit['document_id'] for hit in hits))
+
+            # Query document info
+            documents = db.query(Document).filter(Document.id.in_(doc_ids)).all()
+            doc_info_map = {
+                doc.id: {
+                    "filename": doc.filename,
+                    "folder_path": doc.folder.path if doc.folder else "/",
+                    "title": doc.title or doc.filename,
+                }
+                for doc in documents
+            }
+
+            # Enrich hits with document info
+            enriched_hits = []
+            for hit in hits:
+                doc_id = hit['document_id']
+                doc_info = doc_info_map.get(doc_id, {})
+                enriched_hits.append({
+                    **hit,
+                    "filename": doc_info.get("filename", "未知文档"),
+                    "folder_path": doc_info.get("folder_path", "/"),
+                    "title": doc_info.get("title", "未知标题"),
+                })
+
+            return enriched_hits
+
+        finally:
+            db.close()
+
     def _build_context(self, hits: List[Dict]) -> str:
-        """Create a numbered context block for the LLM prompt."""
+        """Create a numbered context block for the LLM prompt with document info."""
         parts = []
         for idx, hit in enumerate(hits, start=1):
-            parts.append(f"[{idx}] 文档ID: {hit['document_id']}\n{hit['text']}")
+            doc_ref = f"📄 {hit.get('filename', '未知文档')} ({hit.get('folder_path', '/')})"
+            parts.append(f"[文档{idx}] {doc_ref}\n{hit['text']}")
         return "\n\n".join(parts)
 
     def answer_question(self, question: str, top_k: int | None = None) -> Dict:
@@ -41,7 +83,9 @@ class QAService:
                 "total_time": retrieval_time,
             }
 
-        context = self._build_context(hits)
+        # Enrich hits with document metadata
+        enriched_hits = self._enrich_hits_with_document_info(hits)
+        context = self._build_context(enriched_hits)
 
         llm_start = time.perf_counter()
         try:
@@ -54,7 +98,7 @@ class QAService:
         return {
             "question": question,
             "answer": answer,
-            "sources": hits,
+            "sources": enriched_hits,
             "retrieval_time": retrieval_time,
             "llm_time": llm_time,
             "total_time": retrieval_time + llm_time,
