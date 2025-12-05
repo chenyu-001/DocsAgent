@@ -1,5 +1,5 @@
 """Document Upload Route"""
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Form
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Form, BackgroundTasks
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from pathlib import Path
@@ -14,10 +14,8 @@ from models.user_models import User
 from models.document_models import Document, DocumentType, DocumentStatus
 from models.folder_models import Folder
 from utils.hash import compute_file_hash
-from services.parser import DocumentParser
-from services.chunker import get_chunker
+from services.document_processor import get_document_processor
 from services.retriever import get_retriever
-from models.chunk_models import Chunk
 from loguru import logger
 
 router = APIRouter()
@@ -25,6 +23,7 @@ router = APIRouter()
 
 @router.post("/upload")
 async def upload_document(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     folder_id: Optional[int] = Form(None),
     overwrite: bool = Form(False),
@@ -32,19 +31,30 @@ async def upload_document(
     db: Session = Depends(get_db),
 ):
     """
-    Upload and process document
+    Upload document and process asynchronously
 
-    Process flow:
+    NEW ASYNC FLOW:
     1. Validate folder (if provided)
-    2. Save file
+    2. Save file to storage
     3. Compute hash and check duplicates
-    4. Parse document
-    5. Text chunking
-    6. Generate embeddings and store in vector database
+    4. Create document record (status: UPLOADING)
+    5. Start background processing task
+    6. Return immediately (user doesn't wait!)
+
+    Background task will handle:
+    - Parsing (PARSING)
+    - Chunking (EMBEDDING)
+    - Vector embedding (EMBEDDING)
+    - Mark as READY or FAILED
 
     Parameters:
     - **file**: File to upload (required)
     - **folder_id**: Folder ID to organize document (optional)
+    - **overwrite**: Overwrite existing file with same name (default: false)
+
+    Returns:
+    - Immediate response with document_id
+    - Frontend can poll /documents/{id} to check processing status
     """
     try:
         # 1. Validate folder if provided
@@ -56,7 +66,8 @@ async def upload_document(
 
             if not folder:
                 raise HTTPException(status_code=404, detail="Folder not found")
-        # 1. Save file with UUID-based filename to avoid encoding issues
+
+        # 2. Save file with UUID-based filename to avoid encoding issues
         upload_dir = Path(settings.upload_path)
         upload_dir.mkdir(parents=True, exist_ok=True)
 
@@ -68,7 +79,9 @@ async def upload_document(
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # 2. Compute file hash
+        logger.info(f"File saved: {file.filename} -> {unique_filename}")
+
+        # 3. Compute file hash
         file_hash = compute_file_hash(file_path)
 
         # Check if file with same name and folder already exists (overwrite mode)
@@ -81,8 +94,6 @@ async def upload_document(
         if existing_doc_by_name:
             # If overwrite flag is not set, ask for confirmation
             if not overwrite:
-                # Keep the file for potential overwrite
-                # Store the temp file path for cleanup if user cancels
                 return JSONResponse(
                     status_code=409,
                     content={
@@ -121,11 +132,17 @@ async def upload_document(
             Document.file_hash == file_hash,
             Document.owner_id == current_user.id
         ).first()
+
         if existing_doc_by_hash:
             file_path.unlink()  # Delete duplicate file
-            return {"message": "File already exists", "document_id": existing_doc_by_hash.id}
+            logger.info(f"Duplicate file detected: {file.filename} (existing ID: {existing_doc_by_hash.id})")
+            return {
+                "message": "File already exists",
+                "document_id": existing_doc_by_hash.id,
+                "status": existing_doc_by_hash.status.value
+            }
 
-        # 3. Determine file type
+        # 4. Determine file type
         suffix = file.filename.split(".")[-1].lower()
         file_type_map = {
             "pdf": DocumentType.PDF,
@@ -136,14 +153,14 @@ async def upload_document(
         }
         file_type = file_type_map.get(suffix, DocumentType.OTHER)
 
-        # 4. Create document record
+        # 5. Create document record with UPLOADING status
         document = Document(
             filename=file.filename,
             file_hash=file_hash,
             file_type=file_type,
             file_size=file_path.stat().st_size,
             storage_path=str(file_path),
-            status=DocumentStatus.PARSING,
+            status=DocumentStatus.UPLOADING,  # Start with UPLOADING
             owner_id=current_user.id,
             folder_id=folder_id,
         )
@@ -151,93 +168,29 @@ async def upload_document(
         db.commit()
         db.refresh(document)
 
-        logger.info(f"Starting to parse document: {file.filename} (ID: {document.id})")
+        logger.info(f"Document record created: {file.filename} (ID: {document.id}, Status: UPLOADING)")
 
-        # 5. Parse document
-        try:
-            parsed_data = DocumentParser.parse(str(file_path), file_type)
+        # 6. Start background processing
+        processor = get_document_processor()
+        background_tasks.add_task(processor.process_document, document.id)
 
-            document.parsed_text = parsed_data["text"]
-            document.page_count = parsed_data.get("page_count")
-            document.word_count = parsed_data.get("word_count")
+        logger.info(f"Background processing started for document {document.id}")
 
-            # Update metadata
-            metadata = parsed_data.get("metadata", {})
-            document.title = metadata.get("title") or file.filename
-            document.author = metadata.get("author")
-            document.subject = metadata.get("subject")
-
-            document.status = DocumentStatus.EMBEDDING
-            db.commit()
-
-        except Exception as e:
-            logger.error(f"Parsing failed: {e}")
-            document.status = DocumentStatus.FAILED
-            document.error_message = str(e)
-            db.commit()
-            raise HTTPException(status_code=500, detail=f"Document parsing failed: {e}")
-
-        # 6. Text chunking
-        chunker = get_chunker()
-        text_chunks = chunker.chunk_text(parsed_data["text"])
-
-        # 7. Save chunks to database and prepare for embedding
-        chunk_records = []
-        chunk_objects = []
-        for idx, text in enumerate(text_chunks):
-            chunk = Chunk(
-                document_id=document.id,
-                text=text,
-                text_hash=compute_text_hash(text),
-                chunk_index=idx,
-                vector_id=f"doc_{document.id}_chunk_{idx}",
-            )
-            db.add(chunk)
-            chunk_objects.append(chunk)
-
-        # Flush to assign chunk IDs before preparing Qdrant payloads
-        db.flush()
-
-        for chunk in chunk_objects:
-            chunk_records.append({
-                "chunk_id": chunk.id,
-                "document_id": document.id,
-                "text": chunk.text,
-                "vector_id": chunk.vector_id,
-            })
-
-        db.commit()
-
-        # 8. Generate embeddings and store to Qdrant
-        try:
-            retriever = get_retriever()
-            retriever.add_chunks(chunk_records)
-
-            document.status = DocumentStatus.READY
-            db.commit()
-
-            logger.info(f"Document processing completed: {file.filename} ({len(text_chunks)} chunks)")
-
-            return {
-                "message": "Upload successful",
-                "document_id": document.id,
-                "filename": document.filename,
-                "chunks": len(text_chunks),
-            }
-
-        except Exception as e:
-            logger.error(f"Embedding generation failed: {e}")
-            document.status = DocumentStatus.FAILED
-            document.error_message = f"Embedding failed: {str(e)}"
-            db.commit()
-            raise HTTPException(status_code=500, detail=f"Embedding generation failed: {str(e)}")
+        # 7. Return immediately - user doesn't wait!
+        return {
+            "message": "Upload successful - processing in background",
+            "document_id": document.id,
+            "filename": document.filename,
+            "status": document.status.value,
+            "file_size": document.file_size,
+            "file_type": document.file_type.value,
+        }
 
     except Exception as e:
         logger.error(f"Upload failed: {e}")
-        if 'document' in locals() and document.status == DocumentStatus.EMBEDDING:
-            document.status = DocumentStatus.FAILED
-            document.error_message = str(e)
-            db.commit()
+        # Clean up file if it was saved
+        if 'file_path' in locals() and Path(file_path).exists():
+            Path(file_path).unlink()
         raise HTTPException(status_code=500, detail=str(e))
 
 

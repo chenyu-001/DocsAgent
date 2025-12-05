@@ -56,6 +56,7 @@ class Document(Base):
 
     # Parsed content
     parsed_text = Column(Text, nullable=True, comment="Parsed text content")
+    summary = Column(Text, nullable=True, comment="AI-generated document summary")
     doc_metadata = Column(JSON, nullable=True, comment="Additional metadata JSON")
 
     # Status
@@ -97,6 +98,7 @@ class Document(Base):
             "author": self.author,
             "subject": self.subject,
             "keywords": self.keywords,
+            "summary": self.summary,
             "page_count": self.page_count,
             "word_count": self.word_count,
             "status": self.status.value,

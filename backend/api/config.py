@@ -56,10 +56,10 @@ class Settings(BaseSettings):
         description="Embedding model type: bge | openai | custom"
     )
     EMBEDDING_MODEL_NAME: str = Field(
-        default="BAAI/bge-large-zh-v1.5",
-        description="Embedding model name"
+        default="BAAI/bge-base-zh-v1.5",
+        description="Embedding model name (changed from bge-large to bge-base for better performance)"
     )
-    EMBEDDING_DIMENSION: int = Field(default=1024, description="Vector dimension")
+    EMBEDDING_DIMENSION: int = Field(default=768, description="Vector dimension (base: 768, large: 1024)")
     EMBEDDING_BATCH_SIZE: int = Field(default=32, description="Batch size")
     EMBEDDING_DEVICE: str = Field(default="cpu", description="Device: cpu | cuda")
     HF_ENDPOINT: Optional[str] = Field(
