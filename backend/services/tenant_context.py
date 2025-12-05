@@ -6,6 +6,7 @@ from contextvars import ContextVar
 from typing import Optional
 from fastapi import Request, HTTPException, status
 from sqlalchemy.orm import Session
+from starlette.middleware.base import BaseHTTPMiddleware
 import logging
 
 from models.tenant_models import Tenant
@@ -152,7 +153,7 @@ class TenantExtractor:
             return db.query(Tenant).filter(Tenant.slug == identifier).first()
 
 
-class TenantMiddleware:
+class TenantMiddleware(BaseHTTPMiddleware):
     """租户中间件 - FastAPI中间件"""
 
     def __init__(self, app, get_db_func):
@@ -163,10 +164,10 @@ class TenantMiddleware:
             app: FastAPI应用
             get_db_func: 获取数据库会话的函数
         """
-        self.app = app
+        super().__init__(app)
         self.get_db = get_db_func
 
-    async def __call__(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next):
         """
         中间件处理逻辑
 
