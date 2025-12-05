@@ -115,6 +115,24 @@ class DocumentProcessor:
 
             # ========== Step 3: Save Chunks to Database ==========
             try:
+                # First, delete any existing chunks and vectors for this document (in case of reprocessing)
+                existing_chunks = db.query(Chunk).filter(Chunk.document_id == document.id).all()
+                if existing_chunks:
+                    logger.info(f"[Doc {document_id}] Deleting {len(existing_chunks)} existing chunks and vectors")
+
+                    # Delete vectors from Qdrant
+                    try:
+                        retriever = get_retriever()
+                        retriever.delete_document(document.id)
+                        logger.info(f"[Doc {document_id}] Deleted vectors from Qdrant")
+                    except Exception as e:
+                        logger.warning(f"[Doc {document_id}] Failed to delete Qdrant vectors: {e}")
+
+                    # Delete chunks from database
+                    for old_chunk in existing_chunks:
+                        db.delete(old_chunk)
+                    db.commit()
+
                 chunk_records = []
                 chunk_objects = []
 
