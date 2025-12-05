@@ -16,25 +16,27 @@ from loguru import logger
 
 
 def reprocess_all_uploading_documents():
-    """Reprocess all documents stuck in UPLOADING status"""
+    """Reprocess all documents that are not in READY status"""
     db: Session = SessionLocal()
     processor = DocumentProcessor()
 
     try:
-        # Find all UPLOADING documents
+        # Find all documents that are NOT in READY status
+        # This includes: UPLOADING, PARSING, EMBEDDING, FAILED
         documents = db.query(Document).filter(
-            Document.status == DocumentStatus.UPLOADING
+            Document.status != DocumentStatus.READY
         ).all()
 
         if not documents:
-            logger.info("No documents in UPLOADING status found")
+            logger.info("No documents need reprocessing (all are READY)")
             return
 
-        logger.info(f"Found {len(documents)} documents in UPLOADING status")
+        logger.info(f"Found {len(documents)} documents to reprocess")
+        logger.info(f"Status breakdown: {[(doc.id, doc.filename, doc.status.value) for doc in documents]}")
 
         # Process each document
         for doc in documents:
-            logger.info(f"Processing document {doc.id}: {doc.filename}")
+            logger.info(f"Processing document {doc.id}: {doc.filename} (current status: {doc.status.value})")
             try:
                 result = processor.process_document(doc.id)
                 if result["success"]:
