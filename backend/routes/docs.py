@@ -209,11 +209,43 @@ async def copy_document(
         copy_hash_input = f"{original_doc.file_hash}_{document_id}_{int(time.time() * 1000000)}"
         new_file_hash = hashlib.sha256(copy_hash_input.encode()).hexdigest()
 
+        # Determine the new filename
+        # If copying to the same folder, need to add suffix to avoid name conflict
+        # If copying to different folder, can keep the same name (unless it already exists there)
+        new_filename = original_doc.filename
+
+        # Check if a document with the same name already exists in the target folder
+        existing_doc = db.query(Document).filter(
+            Document.filename == new_filename,
+            Document.folder_id == folder_id,
+            Document.owner_id == current_user.id
+        ).first()
+
+        if existing_doc:
+            # Generate a unique filename by adding a copy suffix
+            import os
+            base_name, extension = os.path.splitext(original_doc.filename)
+            counter = 1
+
+            while True:
+                new_filename = f"{base_name}({counter}){extension}"
+                exists = db.query(Document).filter(
+                    Document.filename == new_filename,
+                    Document.folder_id == folder_id,
+                    Document.owner_id == current_user.id
+                ).first()
+
+                if not exists:
+                    break
+                counter += 1
+
+            logger.info(f"Target folder already has '{original_doc.filename}', renamed copy to '{new_filename}'")
+
         # Create new document record (copy all fields except id, created_at, updated_at)
         new_doc = Document(
             owner_id=current_user.id,
             folder_id=folder_id,  # New folder location
-            filename=original_doc.filename,
+            filename=new_filename,  # May be renamed if conflict exists
             file_hash=new_file_hash,  # New unique hash for the copy
             file_type=original_doc.file_type,
             file_size=original_doc.file_size,
