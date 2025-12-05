@@ -166,6 +166,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
         """
         super().__init__(app)
         self.get_db = get_db_func
+        logger.info("✅ TenantMiddleware initialized successfully")
 
     async def dispatch(self, request: Request, call_next):
         """
@@ -183,11 +184,13 @@ class TenantMiddleware(BaseHTTPMiddleware):
 
         # 跳过不需要租户验证的路径
         if self._should_skip(request.url.path):
+            logger.debug(f"Skipping tenant middleware for path: {request.url.path}")
             return await call_next(request)
 
         try:
             # 提取租户ID
             tenant_identifier = TenantExtractor.extract_tenant_id(request)
+            logger.info(f"Extracted tenant identifier: {tenant_identifier} for path: {request.url.path}")
 
             if tenant_identifier:
                 # 获取数据库会话
@@ -198,10 +201,10 @@ class TenantMiddleware(BaseHTTPMiddleware):
                     tenant = TenantExtractor.get_tenant_by_identifier(db, tenant_identifier)
 
                     if not tenant:
-                        logger.warning(f"Tenant not found: {tenant_identifier}")
+                        logger.error(f"❌ Tenant not found in database: {tenant_identifier}")
                         raise HTTPException(
                             status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Tenant not found"
+                            detail=f"Tenant not found: {tenant_identifier}"
                         )
 
                     # 检查租户状态
@@ -224,7 +227,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
                     tenant.last_active_at = datetime.utcnow()
                     db.commit()
 
-                    logger.debug(f"Tenant context set: {tenant.id} ({tenant.name})")
+                    logger.info(f"✅ Tenant context set: {tenant.id} ({tenant.name}) for path: {request.url.path}")
 
                 finally:
                     db.close()
