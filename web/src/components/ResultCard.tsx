@@ -32,17 +32,28 @@ export default function ResultCard({ result, index }: ResultCardProps) {
     <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center space-x-2">
-          <FileText className="w-5 h-5 text-blue-600" />
-          <span className="text-sm font-medium text-gray-900">
-            Result #{index + 1}
-          </span>
-          <span className="text-xs text-gray-500">
-            Doc ID: {result.document_id}
-          </span>
+        <div className="flex flex-col gap-1 flex-1 min-w-0">
+          <div className="flex items-center space-x-2">
+            <FileText className="w-5 h-5 text-blue-600 flex-shrink-0" />
+            <span className="text-sm font-medium text-gray-900">
+              Result #{index + 1}
+            </span>
+          </div>
+          {result.filename && (
+            <div className="flex items-start gap-2 text-xs text-gray-600 ml-7">
+              <span className="font-medium truncate" title={result.filename}>
+                📄 {result.filename}
+              </span>
+              {result.folder_path && (
+                <span className="text-gray-500 flex-shrink-0" title={result.folder_path}>
+                  ({result.folder_path})
+                </span>
+              )}
+            </div>
+          )}
         </div>
-        <div className={`px-2 py-1 rounded-full text-xs font-medium ${getScoreColor(result.score)}`}>
-          {similarityPercent}% Match
+        <div className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${getScoreColor(result.score)}`}>
+          {similarityPercent}% 相关
         </div>
       </div>
 

@@ -75,6 +75,9 @@ export interface SearchResult {
   document_id: number
   text: string
   score: number
+  filename?: string
+  folder_path?: string
+  title?: string
 }
 
 export interface SearchResponse {
