@@ -261,12 +261,14 @@ class TenantMiddleware:
             bool: 是否跳过
         """
         skip_paths = [
+            "/",
             "/health",
             "/docs",
             "/redoc",
             "/openapi.json",
             "/api/auth/register",
             "/api/auth/login",
+            "/api/auth/me",
             "/api/platform",  # 平台管理接口
         ]
 
