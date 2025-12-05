@@ -92,9 +92,9 @@ services:
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-1440}
 
       # Embedding model configuration (updated to bge-base for better performance)
-      EMBEDDING_MODEL_TYPE: ${EMBEDDING_MODEL_TYPE:-bge}  # bge or openai
-      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-BAAI/bge-base-zh-v1.5}
-      EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-768}
+      EMBEDDING_MODEL_TYPE: bge  # Hardcoded to avoid .env issues
+      EMBEDDING_MODEL_NAME: BAAI/bge-base-zh-v1.5
+      EMBEDDING_DIMENSION: 768  # Hardcoded to fix parsing issue
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
 
       # Hugging Face mirror (optional, uncomment and set in .env to use a mirror)
