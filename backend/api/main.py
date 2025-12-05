@@ -11,6 +11,7 @@ from api.logging_config import setup_logging
 from api.db import get_db, init_db
 from api.auth import UserCreate, UserLogin, Token, authenticate_user, create_access_token, get_password_hash, get_current_active_user
 from models.user_models import User
+from services.tenant_context import TenantMiddleware
 from loguru import logger
 
 
@@ -48,6 +49,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Tenant context middleware
+app.middleware("http")(TenantMiddleware(app, get_db))
 
 
 # ==================== Basic Routes ====================
