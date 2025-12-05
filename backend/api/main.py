@@ -51,7 +51,7 @@ app.add_middleware(
 )
 
 # Tenant context middleware
-app.middleware("http")(TenantMiddleware(app, get_db))
+app.add_middleware(TenantMiddleware, get_db_func=get_db)
 
 
 # ==================== Basic Routes ====================
