@@ -85,7 +85,19 @@ class QAService:
 
         # Enrich hits with document metadata
         enriched_hits = self._enrich_hits_with_document_info(hits)
-        context = self._build_context(enriched_hits)
+
+        # Filter sources by relevance score
+        # If any source has score > 0.5, only show high-relevance sources
+        # Otherwise, show all sources
+        has_high_relevance = any(hit['score'] > 0.5 for hit in enriched_hits)
+        if has_high_relevance:
+            filtered_hits = [hit for hit in enriched_hits if hit['score'] > 0.5]
+            logger.info(f"Filtered {len(enriched_hits)} hits to {len(filtered_hits)} high-relevance sources (>0.5)")
+        else:
+            filtered_hits = enriched_hits
+            logger.info(f"No high-relevance sources found, showing all {len(enriched_hits)} sources")
+
+        context = self._build_context(filtered_hits)
 
         llm_start = time.perf_counter()
         try:
@@ -98,7 +110,7 @@ class QAService:
         return {
             "question": question,
             "answer": answer,
-            "sources": enriched_hits,
+            "sources": filtered_hits,
             "retrieval_time": retrieval_time,
             "llm_time": llm_time,
             "total_time": retrieval_time + llm_time,
